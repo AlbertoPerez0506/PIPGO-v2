@@ -1,0 +1,18 @@
+/* =====================================================
+   PIPGO · MAIN CSS
+   Punto de entrada único. Importa toda la arquitectura CSS.
+   Orden: core → layout → components → pages
+   ===================================================== */
+
+@import url('./core/variables.css');
+@import url('./core/base.css');
+@import url('./layout/layout.css');
+@import url('./components/components.css');
+@import url('./components/settings-extras.css');
+@import url('./components/connectivity.css');
+@import url('./components/skeletons.css');
+@import url('./pages/pages.css');
+@import url('./pages/seller.css');
+@import url('./pages/admin.css');
+@import url('./pages/messaging.css');
+@import url('./pages/seller-profile.css');

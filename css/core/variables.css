@@ -1,0 +1,98 @@
+/* =====================================================
+   PIPGO · VARIABLES CSS
+   Design tokens: colores, sombras, radios, dimensiones
+   ===================================================== */
+
+:root {
+    /* Paleta cromática */
+    --bg: #F2F2F2;
+    --surface: #FFFFFF;
+    --surface-secondary: #F7F7F7;
+    --surface-alt: #FAFAFB;
+    --text-primary: #1A1A1A;
+    --text-secondary: #5F5F5F;
+    --text-tertiary: #9E9E9E;
+    --border: #E0E0E0;
+    --border-soft: #ECECEF;
+
+    /* Acento cálido (precios, destacados) */
+    --primary: #F2911B;
+    --primary-dark: #D97F0F;
+    --primary-light: #FFF0E0;
+
+    /* Acción principal PipGo (verde) */
+    --accent: #2DA657;
+    --accent-dark: #238C45;
+    --accent-light: #E8F5E9;
+    --accent-soft: #D3EEDB;
+
+    /* Identidad PipGo (café) */
+    --coffee: #A65F37;
+    --coffee-dark: #8A4C2A;
+    --coffee-light: #F5EDE6;
+
+    /* Acento suave */
+    --star: #F2BE5C;
+    --star-light: #FFF6E0;
+
+    /* Estados semánticos */
+    --danger-bg: #FEE2E2;
+    --danger-fg: #B91C1C;
+    --danger-soft: #FCA5A5;
+
+    --success: #16A34A;
+    --success-bg: #DCFCE7;
+
+    --warning: #D97706;
+    --warning-bg: #FEF3C7;
+
+    --toast-bg: #1F2937;
+
+    /* Sombras */
+    --shadow-xs: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-sm: 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+    --shadow-lg: 0 16px 40px rgba(0,0,0,0.12);
+    --shadow-xl: 0 24px 60px rgba(0,0,0,0.16);
+
+    --nav-shadow:
+        0 12px 32px rgba(20,25,40,0.10),
+        0 4px 12px rgba(20,25,40,0.05);
+
+    --fab-shadow:
+        0 14px 30px rgba(45,166,87,0.42),
+        0 6px 14px rgba(45,166,87,0.26);
+    --fab-shadow-pressed:
+        0 8px 18px rgba(45,166,87,0.34),
+        0 4px 10px rgba(45,166,87,0.20);
+
+    /* Radios */
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-xl: 30px;
+    --radius-2xl: 36px;
+    --radius-full: 9999px;
+
+    /* Dimensiones base */
+    --sheet-max-width: 480px;
+
+    /* Bottom Navigation flotante */
+    --bottom-nav-height: 64px;
+    --bottom-nav-radius: 32px;
+    --bottom-nav-max-width: 420px;
+    --bottom-nav-gutter: 16px;
+    --bottom-nav-bottom-gap: 10px;
+    --fab-size: 56px;
+    --fab-gap: 10px;
+    --fab-offset: -18px;
+
+    /* Transiciones */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-fast: 0.25s;
+    --duration-base: 0.4s;
+    --duration-slow: 0.6s;
+    --duration-tap: 180ms;
+}

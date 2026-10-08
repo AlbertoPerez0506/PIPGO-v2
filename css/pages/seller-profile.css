@@ -1,0 +1,264 @@
+/* =====================================================
+   PIPGO · SELLER PROFILE SHEET
+   ===================================================== */
+
+.seller-profile-sheet {
+    padding-bottom: 24px;
+}
+
+.seller-profile-body {
+    padding: 6px 20px 22px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.sp-avatar {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    font-size: 32px;
+    margin-top: 6px;
+    box-shadow: 0 12px 28px rgba(45,166,87,0.20);
+    border: 3px solid var(--surface);
+    outline: 3px solid var(--accent-soft);
+}
+.sp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.sp-identity {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    margin-top: 6px;
+}
+.sp-username {
+    font-size: 22px; font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+.sp-role {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700;
+    color: var(--accent-dark);
+    background: var(--accent-light);
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.sp-role i { font-size: 10px; }
+
+.sp-display-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 2px 0 0;
+}
+
+.sp-category {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--coffee-dark);
+    background: var(--coffee-light);
+    padding: 4px 12px;
+    border-radius: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.sp-description {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 6px 0 4px;
+    max-width: 340px;
+}
+
+.sp-location {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    display: inline-flex; align-items: center; gap: 5px;
+    margin: 0;
+}
+.sp-location i { font-size: 11px; color: var(--accent); }
+
+.sp-follow-btn {
+    margin-top: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 25px;
+    font-family: inherit;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 24px rgba(45,166,87,0.28);
+    transition: transform var(--duration-fast), background var(--duration-fast);
+}
+.sp-follow-btn:active { transform: scale(0.96); background: var(--accent-dark); }
+
+.sp-contacts {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+    width: 100%;
+}
+.sp-contact-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 16px;
+    border-radius: 22px;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 13px; font-weight: 700;
+    border: 1px solid var(--border-soft);
+    transition: transform var(--duration-fast), background var(--duration-fast);
+}
+.sp-contact-btn:active { transform: scale(0.96); background: var(--bg); }
+.sp-contact-btn i { font-size: 13px; color: var(--accent); }
+.sp-contact-btn.sp-wa {
+    background: #E7F9EF;
+    border-color: #A7E8C4;
+    color: #0F7A3D;
+}
+.sp-contact-btn.sp-wa i { color: #25D366; }
+
+.sp-message-btn {
+    margin-top: 16px;
+    width: 100%;
+    background: var(--surface-secondary);
+    border: 1.5px solid var(--border);
+    color: var(--text-primary);
+    padding: 13px 20px;
+    border-radius: 22px;
+    font-family: inherit;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px;
+    transition: background var(--duration-fast);
+}
+.sp-message-btn:active { background: var(--bg); }
+.sp-message-btn i { color: var(--accent); }
+
+.seller-profile-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-tertiary);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.seller-profile-empty i { font-size: 32px; margin-bottom: 8px; }
+.seller-profile-empty h4 {
+    font-size: 15px; font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Skeleton */
+.sp-skel-avatar {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: var(--border-soft);
+    animation: msgPulse 1.4s ease-in-out infinite;
+}
+.sp-skel-line {
+    height: 12px; border-radius: 6px;
+    background: var(--border-soft);
+    animation: msgPulse 1.4s ease-in-out infinite;
+    margin: 6px auto;
+}
+.sp-skel-line.w-40 { width: 40%; }
+.sp-skel-line.w-60 { width: 60%; }
+.sp-skel-line.w-80 { width: 80%; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Bloque vendedor dentro del Product Sheet */
+.sheet-seller-block {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    margin: 4px 0 12px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--duration-fast);
+}
+.sheet-seller-block:active { background: var(--bg); }
+.sheet-seller-block.hidden { display: none; }
+.sheet-seller-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    font-size: 15px;
+}
+.sheet-seller-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sheet-seller-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sheet-seller-username {
+    font-size: 14px; font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sheet-seller-role {
+    font-size: 11px; color: var(--accent-dark);
+    font-weight: 700;
+}
+.sheet-seller-arrow {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+
+/* Follow button dentro del Product Sheet */
+.sheet-seller-follow-btn {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    color: var(--text-tertiary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all var(--duration-fast);
+}
+.sheet-seller-follow-btn.hidden { display: none; }
+.sheet-seller-follow-btn:active { transform: scale(0.92); }
+.sheet-seller-follow-btn.is-following {
+    background: var(--accent-light);
+    border-color: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+/* Estado "Siguiendo" del botón en SellerProfile */
+.sp-follow-btn.is-following {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    box-shadow: none;
+    border: 1.5px solid var(--accent-soft);
+}

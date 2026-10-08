@@ -1,0 +1,335 @@
+/* =====================================================
+   PIPGO · SETTINGS EXTRAS
+   Entrega 5: edición de username inline, checkbox WhatsApp,
+   botón WhatsApp en el sheet, chips de condición,
+   presentación, contador de caracteres, vista previa,
+   banner de nuevas publicaciones y modal de salir sin guardar.
+   ===================================================== */
+
+/* =====================================================
+   1) EDICIÓN DE USERNAME (Ajustes)
+   ===================================================== */
+.settings-username-row { position: relative; }
+
+.settings-row-buttons {
+    display: flex; gap: 6px; align-items: center;
+    flex-shrink: 0; margin-left: auto;
+}
+.settings-row-buttons.hidden { display: none; }
+
+.settings-row-action-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; cursor: pointer; flex-shrink: 0;
+    transition:
+        transform var(--duration-fast) var(--ease-smooth),
+        background var(--duration-fast),
+        border-color var(--duration-fast),
+        color var(--duration-fast);
+}
+.settings-row-action-btn:active {
+    transform: scale(0.92);
+    background: var(--accent-light);
+    border-color: var(--accent-soft);
+    color: var(--accent-dark);
+}
+.settings-row-action-btn:disabled {
+    opacity: 0.45; cursor: not-allowed;
+    box-shadow: none; transform: none;
+}
+.settings-row-action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(45,166,87,0.24);
+}
+.settings-row-action-btn.primary:active {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+}
+
+.username-input-wrap {
+    position: relative; display: flex; align-items: center;
+    margin-top: 4px;
+}
+.username-input-wrap input {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px 8px 30px;
+    font-family: inherit; font-size: 14px;
+    background: var(--surface); outline: none;
+    color: var(--text-primary);
+    width: 100%; min-width: 0;
+    transition: all var(--duration-fast);
+}
+.username-input-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,166,87,0.12);
+}
+.username-input-prefix {
+    position: absolute; left: 12px;
+    font-weight: 700; color: var(--text-tertiary);
+    pointer-events: none; font-size: 14px; line-height: 1;
+}
+
+.username-feedback {
+    padding: 0 16px 12px;
+    font-size: 12.5px; font-weight: 600;
+    line-height: 1.4; margin-top: -4px; min-height: 0;
+}
+.username-feedback.hidden { display: none; }
+.username-feedback.ok       { color: var(--accent-dark); }
+.username-feedback.err      { color: var(--danger-fg); }
+.username-feedback.checking { color: var(--text-tertiary); }
+
+/* =====================================================
+   2) CHECKBOX WHATSAPP (form)
+   ===================================================== */
+.form-checkbox {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface-secondary);
+    border: 1.5px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 600;
+    color: var(--text-primary);
+    transition: background var(--duration-fast), border-color var(--duration-fast);
+    user-select: none; margin-top: 6px;
+}
+.form-checkbox:active { background: var(--bg); }
+.form-checkbox input {
+    width: 18px; height: 18px;
+    accent-color: #25D366; cursor: pointer; flex-shrink: 0;
+}
+.form-checkbox-label {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-primary); line-height: 1.3;
+}
+.form-checkbox-label i { color: #25D366; font-size: 15px; flex-shrink: 0; }
+.form-checkbox:has(input:checked) {
+    border-color: #A7E8C4; background: #E7F9EF;
+}
+
+/* =====================================================
+   3) BOTÓN WHATSAPP EN EL SHEET
+   ===================================================== */
+.sheet-contact-actions {
+    display: flex; gap: 6px; align-items: center;
+    flex-shrink: 0; flex-wrap: wrap;
+}
+.btn-whatsapp {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    border-color: #25D366 !important;
+    color: #0F7A3D !important;
+    background: #E7F9EF !important;
+    transition: all var(--duration-fast);
+}
+.btn-whatsapp:active {
+    background: #D2F3E0 !important;
+    transform: scale(0.96);
+}
+.btn-whatsapp.hidden { display: none !important; }
+.btn-whatsapp i { font-size: 13px; line-height: 1; }
+
+/* =====================================================
+   4) HINTS Y CONTADOR
+   ===================================================== */
+.form-hint {
+    font-size: 11.5px; color: var(--text-tertiary);
+    font-weight: 500; line-height: 1.4; margin-top: 2px;
+}
+.char-counter {
+    font-size: 11.5px; color: var(--text-tertiary);
+    font-weight: 600; text-align: right;
+    letter-spacing: 0.2px;
+    transition: color var(--duration-fast);
+}
+.char-counter.is-near-limit { color: var(--warning); }
+.char-counter.is-at-limit   { color: var(--danger-fg); }
+
+/* =====================================================
+   5) CHIPS DE CONDICIÓN
+   ===================================================== */
+.condition-chips {
+    display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px;
+}
+.condition-chip {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    padding: 9px 14px; border-radius: 22px;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition:
+        background var(--duration-fast),
+        border-color var(--duration-fast),
+        color var(--duration-fast),
+        transform var(--duration-fast),
+        box-shadow var(--duration-fast);
+}
+.condition-chip i { font-size: 12px; opacity: 0.75; }
+.condition-chip:active { transform: scale(0.96); }
+.condition-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(45,166,87,0.24);
+}
+.condition-chip.active i { opacity: 1; }
+
+/* =====================================================
+   6) PRESENTACIÓN
+   ===================================================== */
+.presentation-row {
+    display: grid; grid-template-columns: 1fr 120px;
+    gap: 8px; align-items: stretch;
+}
+.presentation-row input,
+.presentation-row select {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family: inherit; font-size: 15px;
+    background: var(--surface); outline: none;
+    color: var(--text-primary);
+    width: 100%;
+    transition: all var(--duration-fast);
+}
+.presentation-row select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.presentation-row input:focus,
+.presentation-row select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,166,87,0.12);
+}
+
+/* =====================================================
+   7) BOTÓN VISTA PREVIA
+   ===================================================== */
+.btn-preview {
+    width: 100%; margin-top: 4px;
+    justify-content: center; gap: 8px;
+}
+
+/* =====================================================
+   8) VISTA PREVIA (modal)
+   ===================================================== */
+.preview-modal-pro {
+    max-height: 92vh; overflow-y: auto;
+    padding: 22px 20px;
+}
+.preview-body { margin-bottom: 16px; }
+.preview-card {
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.preview-gallery {
+    width: 100%; aspect-ratio: 4 / 3;
+    background: var(--border); overflow: hidden;
+}
+.preview-gallery img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+}
+.preview-body-inner {
+    padding: 16px 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.preview-body-inner .sheet-category-badge { align-self: flex-start; margin-bottom: 0; }
+.preview-body-inner .sheet-title { font-size: 20px; margin: 0; }
+.preview-body-inner .sheet-description { margin: 6px 0 0; font-size: 13.5px; }
+.preview-body-inner .sheet-store-name { margin: 0; font-size: 12.5px; }
+.preview-body-inner .sheet-price-row { margin: 4px 0 0; gap: 8px; }
+.preview-body-inner .sheet-price { font-size: 22px; }
+.preview-body-inner .sheet-schedule-block,
+.preview-body-inner .sheet-refs-block,
+.preview-body-inner .sheet-location-card,
+.preview-body-inner .sheet-contact-row { margin: 6px 0 0; }
+
+.preview-seller-row {
+    display: flex; justify-content: flex-start;
+    margin-top: 8px; padding-top: 10px;
+    border-top: 1px solid var(--border-soft);
+}
+.preview-seller-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--coffee-light); color: var(--coffee-dark);
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+}
+.preview-seller-chip i { font-size: 11px; }
+
+/* Chips reutilizables en el sheet */
+.sheet-badges-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin: 6px 0 10px;
+}
+.sheet-badges-row.hidden { display: none; }
+.sheet-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.sheet-badge i { font-size: 10.5px; }
+.sheet-badge-condition    { background: var(--star-light);   color: var(--coffee-dark); }
+.sheet-badge-presentation { background: var(--accent-light); color: var(--accent-dark); }
+
+/* =====================================================
+   9) BANNER DE NUEVAS PUBLICACIONES (realtime Home)
+   ===================================================== */
+.home-new-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px 16px;
+    width: 100%;
+    background: linear-gradient(135deg, #2DA657 0%, #238C45 100%);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(45,166,87,0.28);
+    animation: homeBannerSlideIn 0.35s var(--ease-smooth);
+}
+.home-new-banner i { font-size: 12px; }
+.home-new-banner.hidden { display: none; }
+.home-new-banner:active { transform: scale(0.98); }
+
+@keyframes homeBannerSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =====================================================
+   10) TEXTO EN MODALES DE BORRADOR / SALIR SIN GUARDAR
+   FIX: incluye white-space: pre-line para que los \n
+   se rendericen incluso si components.css no cargó.
+   ===================================================== */
+.unsaved-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 16px;
+    padding: 0 2px;
+    white-space: pre-line;
+}

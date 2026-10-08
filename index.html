@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#F2F2F2">
+    <title>PipGo</title>
+    <link rel="icon" href="/assets/android/icon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script>
+      (function() {
+        var isCordova = window.location.protocol === 'file:' ||
+                         window.cordova !== undefined ||
+                         window.Capacitor !== undefined;
+        if (isCordova) {
+          var s = document.createElement('script');
+          s.src = 'cordova.js';
+          s.async = false;
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/pages/legal.css">
+</head>
+<body>
+
+<div id="pipgo-splash">
+    <img src="/assets/android/Splahs.jpg" alt="PipGo">
+</div>
+
+<div id="app">
+    <div class="app-shell">
+
+        <main id="main-content" class="main-content">
+
+            <!-- ============ VISTA: INICIO ============ -->
+            <section id="view-home" class="view active">
+                <header class="home-header" id="home-header">
+                    <div class="topbar">
+                        <div class="brand-group">
+                            <div class="logo-badge">
+                                <img src="/assets/android/logo_go.png" alt="PipGo" class="logo-image">
+                            </div>
+                            <div class="brand-text">
+                                <h1><span class="brand-pip">Pip</span><span class="brand-go">Go</span></h1>
+                                <button class="location-chip" id="location-chip" type="button">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    <span id="location-text">Detectando…</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="icon-btn" id="home-search-btn" aria-label="Buscar">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+
+                    <div class="home-hero" id="home-hero">
+                        <p class="hero-greeting" id="home-greeting">Hola</p>
+                        <h2 class="hero-title">¿Qué estás buscando hoy?</h2>
+                    </div>
+
+                    <button class="home-search-trigger" id="home-search-trigger" type="button" aria-label="Abrir buscador">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>Buscar frutas, verduras…</span>
+                    </button>
+
+                    <div class="home-filter-chips" id="home-filter-chips" role="tablist" aria-label="Filtrar por categoría"></div>
+
+                    <button id="home-new-banner" class="home-new-banner hidden" type="button" aria-live="polite">
+                        <i class="fa-solid fa-arrow-up"></i>
+                        <span id="home-new-banner-text">1 nueva publicación</span>
+                    </button>
+                </header>
+
+                <div class="section-header">
+                    <h3>Descubre lo que hay cerca de ti</h3>
+                    <button class="text-link" id="btn-ver-todos">Ver todos <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div id="products-grid" class="products-grid"></div>
+            </section>
+
+            <!-- ============ VISTA: BUSCAR ============ -->
+            <section id="view-search" class="view">
+                <header class="search-header-pro" id="search-header">
+                    <div class="search-header-top">
+                        <div>
+                            <h2>Explorar</h2>
+                            <p class="search-subtitle" id="search-subtitle">Descubre productos cerca de ti</p>
+                        </div>
+                        <button class="icon-btn" id="btn-search-filters" aria-label="Filtros">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span class="icon-badge-dot hidden" id="filter-badge"></span>
+                        </button>
+                    </div>
+                    <div class="search-bar-pro">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="search-input" placeholder="Productos, tiendas, categorías…" autocomplete="off">
+                        <button class="clear-search" id="clear-search" aria-label="Limpiar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="filter-chip-row" id="filter-chip-row"></div>
+                </header>
+
+                <div class="category-scroll" id="search-category-scroll"></div>
+
+                <div class="search-suggestions" id="search-suggestions">
+                    <span class="suggestion-label"><i class="fa-solid fa-fire"></i> Tendencias</span>
+                    <div class="suggestion-chips" id="suggestion-chips"></div>
+                </div>
+
+                
+                <div id="search-sellers-section" class="search-sellers-section hidden">
+                    <h3 class="search-section-title">
+                        <i class="fa-solid fa-store"></i> Vendedores
+                    </h3>
+                    <div id="search-sellers-results" class="search-sellers-list"></div>
+                </div>
+
+                <div id="search-results" class="products-grid"></div>
+            </section>
+
+            <!-- ============ VISTA: MENSAJES ============ -->
+            <section id="view-messaging" class="view">
+                <header class="messaging-header-pro">
+                    <div class="messaging-header-top">
+                        <h2>Mensajes</h2>
+                    </div>
+                    <div class="search-bar-pro">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="messaging-search-input"
+                               placeholder="Buscar vendedores seguidos…" autocomplete="off">
+                        <button class="clear-search" id="messaging-clear-search" aria-label="Limpiar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </header>
+                <div id="messaging-content" class="messaging-content"></div>
+            </section>
+
+            <!-- ============ VISTA: ANUNCIARME ============ -->
+            <section id="view-anunciarme" class="view">
+                <header class="view-header">
+                    <h2>Anunciarme</h2>
+                </header>
+
+                <div id="login-required" class="login-required">
+                    <i class="fa-solid fa-user-lock"></i>
+                    <h3>Necesitas iniciar sesión</h3>
+                    <p>Para publicar un anuncio debes estar autenticado.</p>
+                    <button class="btn-primary" id="btn-go-auth">Iniciar sesión</button>
+                </div>
+
+               <div class="form-wrapper hidden" id="form-wrapper">
+
+    <!-- PASO 1: SELECCIÓN DE TIPO DE VENDEDOR -->
+    <div class="form-step" id="step-type">
+        <div class="step-hero">
+            <span class="step-hero-eyebrow">
+                <i class="fa-solid fa-bullhorn"></i> Nueva publicación
+            </span>
+            <h3 class="step-title">¿Cómo vas a vender?</h3>
+            <p class="step-subtitle">Elige el tipo de vendedor que mejor describe tu negocio</p>
+        </div>
+
+        <div class="seller-options-pro">
+            <button type="button" class="seller-card-pro seller-card-ambulante" id="type-calle" data-type="calle">
+                <div class="seller-card-pro-badge">Más común</div>
+                <div class="seller-card-pro-icon">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div class="seller-card-pro-body">
+                    <h4 class="seller-card-pro-name">Puesto Ambulante</h4>
+                    <p class="seller-card-pro-desc">Vendes en tianguis, ferias, esquinas o de casa en casa</p>
+                    <ul class="seller-card-pro-features">
+                        <li><i class="fa-solid fa-check"></i> Sin ubicación fija</li>
+                        <li><i class="fa-solid fa-check"></i> Productos del día</li>
+                        <li><i class="fa-solid fa-check"></i> Ideal para comenzar</li>
+                    </ul>
+                </div>
+                <div class="seller-card-pro-arrow">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </button>
+
+            <button type="button" class="seller-card-pro seller-card-local" id="type-establecimiento" data-type="establecimiento">
+                <div class="seller-card-pro-icon">
+                    <i class="fa-solid fa-shop"></i>
+                </div>
+                <div class="seller-card-pro-body">
+                    <h4 class="seller-card-pro-name">Local Establecido</h4>
+                    <p class="seller-card-pro-desc">Tienes un lugar fijo donde tus clientes te encuentran</p>
+                    <ul class="seller-card-pro-features">
+                        <li><i class="fa-solid fa-check"></i> Ubicación permanente</li>
+                        <li><i class="fa-solid fa-check"></i> Horario definido</li>
+                        <li><i class="fa-solid fa-check"></i> Mayor confianza</li>
+                    </ul>
+                </div>
+                <div class="seller-card-pro-arrow">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- PASO 2: FORMULARIO -->
+    <form id="publication-form" class="publication-form hidden">
+        <button type="button" class="btn-back" id="btn-back-type">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </button>
+
+        <!-- Sección: Fotos -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <div class="form-section-icon form-section-icon-photos">
+                    <i class="fa-solid fa-camera"></i>
+                </div>
+                <div>
+                    <h4>Fotos del producto</h4>
+                    <p>La principal es obligatoria</p>
+                </div>
+            </div>
+
+            <div class="photo-gallery" id="photo-gallery">
+                <div class="photo-slot main-slot" id="photo-slot-main">
+                    <i class="fa-solid fa-camera"></i>
+                    <span>Foto principal</span>
+                    <input type="file" id="photo-input-main" accept="image/*" hidden>
+                    <img id="photo-preview-main" class="photo-preview hidden" alt="Foto principal">
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-main"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="photo-slot secondary-slot" id="photo-slot-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Foto 2</span>
+                    <input type="file" id="photo-input-2" accept="image/*" hidden>
+                    <img id="photo-preview-2" class="photo-preview hidden" alt="Foto 2">
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="photo-slot secondary-slot" id="photo-slot-3">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Foto 3</span>
+                    <input type="file" id="photo-input-3" accept="image/*" hidden>
+                    <img id="photo-preview-3" class="photo-preview hidden" alt="Foto 3">
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-3"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="photo-slot secondary-slot" id="photo-slot-4">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Foto 4</span>
+                    <input type="file" id="photo-input-4" accept="image/*" hidden>
+                    <img id="photo-preview-4" class="photo-preview hidden" alt="Foto 4">
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-4"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="photo-slot secondary-slot" id="photo-slot-5">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Foto 5</span>
+                    <input type="file" id="photo-input-5" accept="image/*" hidden>
+                    <img id="photo-preview-5" class="photo-preview hidden" alt="Foto 5">
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-5"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección: Producto -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <div class="form-section-icon form-section-icon-product">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <div>
+                    <h4>Datos del producto</h4>
+                    <p>Categoría, nombre y precio</p>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="product-category">Categoría</label>
+                <div class="select-pro-wrap">
+                    <i class="fa-solid fa-tag select-pro-icon"></i>
+                    <select id="product-category" required>
+                        <option value="" disabled selected>Selecciona una categoría</option>
+                        <option value="Frutas">Frutas</option>
+                        <option value="Verduras">Verduras</option>
+                        <option value="Antojitos">Antojitos</option>
+                        <option value="Comida preparada">Comida preparada</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Postres">Postres</option>
+                        <option value="Juguetes">Juguetes</option>
+                        <option value="Helados">Helados</option>
+                        <option value="Panadería">Panadería</option>
+                        <option value="Carnes">Carnes</option>
+                        <option value="Mariscos">Mariscos</option>
+                        <option value="Lácteos">Lácteos</option>
+                        <option value="Productos del campo">Productos del campo</option>
+                        <option value="Artesanías">Artesanías</option>
+                        <option value="Ropa y accesorios">Ropa y accesorios</option>
+                        <option value="Belleza y cuidado">Belleza y cuidado</option>
+                        <option value="Hogar">Hogar</option>
+                        <option value="Electrónica">Electrónica</option>
+                        <option value="Mascotas">Mascotas</option>
+                        <option value="Servicios">Servicios</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="store-name">Nombre del establecimiento <span class="optional-tag">Opcional</span></label>
+                <input type="text" id="store-name" placeholder="Establecimiento" maxlength="60">
+            </div>
+
+            <div class="input-group">
+                <label for="product-name">Nombre del producto</label>
+                <input type="text" id="product-name" placeholder="Nombre del producto" required maxlength="60">
+            </div>
+
+            <div class="input-group">
+                <label for="product-price">Precio</label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix">$</span>
+                    <input type="tel" id="product-price" placeholder="0.00" inputmode="decimal" required>
+                </div>
+            </div>
+
+            <div class="input-group hidden" id="unit-group">
+                <label for="product-unit">Unidad de venta</label>
+                <div class="select-pro-wrap">
+                    <i class="fa-solid fa-scale-balanced select-pro-icon"></i>
+                    <select id="product-unit"></select>
+                    <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                </div>
+                <p class="form-hint" id="unit-hint">Se mostrará como "$0 / unidad".</p>
+            </div>
+
+            <div class="input-group hidden" id="presentation-group">
+                <label>Presentación <span class="optional-tag">Opcional</span></label>
+                <div class="presentation-row">
+                    <input type="tel" id="product-presentation-qty" placeholder="Cantidad" inputmode="decimal" maxlength="8">
+                    <select id="product-presentation-unit"></select>
+                </div>
+                <p class="form-hint">Cantidad con la que se vende, por ejemplo: 500 g, 1 kg, 12 piezas.</p>
+            </div>
+
+            <div class="input-group hidden" id="condition-group">
+                <label>Condición</label>
+                <div class="condition-chips" id="condition-chips" role="radiogroup" aria-label="Condición del producto"></div>
+            </div>
+        </div>
+
+        <!-- Sección: Descripción -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <div class="form-section-icon form-section-icon-desc">
+                    <i class="fa-solid fa-pen"></i>
+                </div>
+                <div>
+                    <h4>Descripción</h4>
+                    <p>Cuéntale al comprador qué ofreces</p>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="product-desc">Descripción</label>
+                <textarea id="product-desc" rows="3" placeholder="Describe tu producto, calidad, condición…" maxlength="400"></textarea>
+                <p class="char-counter" id="desc-counter">0 / 400</p>
+            </div>
+
+            <div class="input-group">
+                <label for="product-extra-refs">Referencias <span class="optional-tag">Opcional</span></label>
+                <textarea id="product-extra-refs" rows="2" placeholder="Detalles extra que solo verá quien abra la publicación (cómo llegar, etc.)" maxlength="300"></textarea>
+            </div>
+        </div>
+
+        <!-- Sección: Contacto -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <div class="form-section-icon form-section-icon-contact">
+                    <i class="fa-solid fa-phone"></i>
+                </div>
+                <div>
+                    <h4>Contacto</h4>
+                    <p>Cómo te contactan los compradores</p>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="product-phone">Teléfono de contacto <span class="optional-tag">Opcional</span></label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix"><i class="fa-solid fa-phone"></i></span>
+                    <input type="tel" id="product-phone" placeholder="961 123 4567" inputmode="tel" maxlength="20">
+                </div>
+                <label class="form-checkbox" for="product-has-whatsapp">
+                    <input type="checkbox" id="product-has-whatsapp">
+                    <span class="form-checkbox-label">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                        Este número tiene WhatsApp
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Sección: Ubicación y horario -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <div class="form-section-icon form-section-icon-location">
+                    <i class="fa-solid fa-location-dot"></i>
+                </div>
+                <div>
+                    <h4>Ubicación y horario</h4>
+                    <p>Dónde y cuándo encontrarte</p>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="product-ref">Referencia del lugar</label>
+                <input type="text" id="product-ref" placeholder="Calle, colonia, referencias del punto…" required maxlength="120">
+                <button type="button" class="btn-location" id="btn-get-location">
+                    <i class="fa-solid fa-location-crosshairs"></i> Usar mi ubicación
+                </button>
+            </div>
+
+            <div class="input-group schedule-group">
+                <label>Horario <span class="optional-tag">Opcional</span></label>
+                <button type="button" class="schedule-toggle" id="schedule-toggle" aria-expanded="false">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="schedule-toggle-text">Agregar horario</span>
+                    <i class="fa-solid fa-chevron-down schedule-chevron"></i>
+                </button>
+                <div class="schedule-panel hidden" id="schedule-panel">
+                    <div class="schedule-days" id="schedule-days" role="group" aria-label="Días del horario">
+                        <button type="button" data-day="1">L</button>
+                        <button type="button" data-day="2">M</button>
+                        <button type="button" data-day="3">X</button>
+                        <button type="button" data-day="4">J</button>
+                        <button type="button" data-day="5">V</button>
+                        <button type="button" data-day="6">S</button>
+                        <button type="button" data-day="0">D</button>
+                    </div>
+                    <div class="schedule-times">
+                        <div class="input-group">
+                            <label for="schedule-start">Desde</label>
+                            <input type="time" id="schedule-start" value="08:00">
+                        </div>
+                        <div class="input-group">
+                            <label for="schedule-end">Hasta</label>
+                            <input type="time" id="schedule-end" value="12:00">
+                        </div>
+                    </div>
+                    <p class="form-hint">Puedes usar cualquier hora, mañana o tarde. Ej. 14:00 a 17:00.</p>
+                    <button type="button" class="btn-clear-schedule hidden" id="btn-clear-schedule">
+                        <i class="fa-solid fa-trash"></i> Quitar horario
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="form-error" class="form-error hidden"></div>
+
+        <div class="form-actions-sticky">
+            <button type="button" class="btn-outline btn-preview" id="btn-preview">
+                <i class="fa-solid fa-eye"></i> Vista previa
+            </button>
+            <button type="submit" class="btn-primary btn-submit" id="btn-submit">
+                <i class="fa-solid fa-paper-plane"></i> <span id="btn-submit-text">Publicar anuncio</span>
+            </button>
+        </div>
+    </form>
+</div>
+            </section>
+
+            <!-- ============ VISTA: PERFIL ============ -->
+            <section id="view-perfil" class="view">
+                <div id="profile-content"></div>
+            </section>
+
+            <!-- ============ VISTA: ADMIN ============ -->
+            <section id="view-admin" class="view">
+                <header class="admin-header">
+                    <button class="admin-back" id="admin-back" aria-label="Volver">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="admin-header-text">
+                        <h2>Panel Admin</h2>
+                        <p id="admin-hello">Hola, admin</p>
+                    </div>
+                </header>
+
+                <div class="admin-tabs" role="tablist">
+                    <button class="admin-tab active" data-admin-tab="dashboard" type="button">Dashboard</button>
+                    <button class="admin-tab" data-admin-tab="applications" type="button">Solicitudes</button>
+                    <button class="admin-tab" data-admin-tab="recoveries" type="button">Recuperaciones</button>
+                    <button class="admin-tab" data-admin-tab="users" type="button">Usuarios</button>
+                </div>
+
+                <div class="admin-panels">
+                    <div class="admin-panel active" id="admin-panel-dashboard"></div>
+                    <div class="admin-panel" id="admin-panel-applications"></div>
+                    <div class="admin-panel" id="admin-panel-recoveries"></div>
+                    <div class="admin-panel" id="admin-panel-users"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ============ SHEET DE PRODUCTO ============ -->
+        <div id="sheet-backdrop" class="sheet-backdrop">
+            <div id="product-sheet" class="product-sheet">
+                <div class="sheet-drag-zone" id="sheet-drag-zone"><div class="sheet-handle"></div></div>
+                <div class="gallery-container" id="gallery-container">
+                    <div class="gallery-track" id="gallery-track"></div>
+                    <button class="gallery-arrow gallery-arrow-prev" id="gallery-prev" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="gallery-arrow gallery-arrow-next" id="gallery-next" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button class="gallery-close" id="gallery-close" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+                    <div class="gallery-dots" id="gallery-dots"></div>
+                    <span class="gallery-hint"><i class="fa-solid fa-expand"></i> Toca para ampliar</span>
+                </div>
+                <div class="sheet-content" id="sheet-content">
+                    <div class="sheet-category-badge" id="sheet-category"></div>
+                    <h2 id="sheet-name" class="sheet-title"></h2>
+
+                    <!-- Identidad pública del vendedor -->                    <div class="sheet-seller-block" id="sheet-seller-block" role="button" tabindex="0">
+                        <div class="sheet-seller-avatar" id="sheet-seller-avatar"></div>
+                        <div class="sheet-seller-text" id="sheet-seller-open">
+                            <span class="sheet-seller-username" id="sheet-seller-username">@usuario</span>
+                            <span class="sheet-seller-role">Vendedor</span>
+                        </div>
+                        <button class="sheet-seller-follow-btn hidden" id="sheet-seller-follow-btn"
+                                type="button" aria-label="Seguir vendedor">
+                            <i class="fa-regular fa-heart"></i>
+                        </button>
+                        <i class="fa-solid fa-chevron-right sheet-seller-arrow"></i>
+                    </div>
+
+                    <div class="sheet-badges-row hidden" id="sheet-badges-row"></div>
+                    <p class="sheet-store-name" id="sheet-store"></p>
+                    <div class="sheet-price-row">
+                        <span id="sheet-price" class="sheet-price"></span>
+                        <span id="sheet-time" class="sheet-time"></span>
+                    </div>
+                    <p id="sheet-desc" class="sheet-description"></p>
+
+                    <div class="sheet-refs-block" id="sheet-refs-block">
+                        <div class="refs-header"><i class="fa-solid fa-circle-info"></i> Referencias</div>
+                        <p id="sheet-refs"></p>
+                    </div>
+
+                    <div class="sheet-schedule-block hidden" id="sheet-schedule-block">
+                        <div class="sheet-schedule-icon"><i class="fa-regular fa-clock"></i></div>
+                        <div class="sheet-schedule-info">
+                            <span>Horario</span>
+                            <strong id="sheet-schedule-text"></strong>
+                        </div>
+                    </div>
+
+                    <div class="sheet-location-card">
+                        <div class="location-icon"><i class="fa-solid fa-location-dot"></i></div>
+                        <div class="location-info">
+                            <span>Ubicación de referencia</span>
+                            <strong id="sheet-ref"></strong>
+                        </div>
+                        <button class="map-link" id="sheet-map-link"><i class="fa-solid fa-diamond-turn-right"></i> Llegar</button>
+                    </div>
+
+                    <div class="sheet-contact-row hidden" id="sheet-contact-row">
+                        <div class="contact-info">
+                            <i class="fa-solid fa-phone"></i>
+                            <span id="sheet-phone"></span>
+                        </div>
+                        <div class="sheet-contact-actions">
+                            <a class="btn-outline btn-call" id="sheet-call" href="#"><i class="fa-solid fa-phone"></i> Llamar</a>
+                            <button class="btn-outline btn-whatsapp hidden" id="sheet-whatsapp" type="button">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sheet-actions">
+                        <button class="btn-primary btn-large" id="btn-directions">
+                            <i class="fa-solid fa-diamond-turn-right"></i> Cómo llegar
+                        </button>
+                        <button class="btn-outline btn-icon-only" id="btn-favorite" aria-label="Guardar">
+                            <i class="fa-regular fa-bookmark"></i>
+                        </button>
+                    </div>
+
+                    <button class="btn-chat-v2 active" id="btn-chat-v2">
+                        <i class="fa-solid fa-comment-dots"></i> Mensaje
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ LIGHTBOX FULLSCREEN ============ -->
+        <div id="lightbox" class="lightbox hidden">
+            <button class="lightbox-close" id="lightbox-close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="lightbox-counter" id="lightbox-counter">1 / 1</div>
+            <div class="lightbox-track" id="lightbox-track"></div>
+            <div class="lightbox-dots" id="lightbox-dots"></div>
+        </div>
+
+        <!-- ============ SELLER PROFILE SHEET ============ -->
+        <div id="seller-profile-backdrop" class="sheet-backdrop">
+            <div id="seller-profile-sheet" class="product-sheet seller-profile-sheet">
+                <div class="sheet-drag-zone"><div class="sheet-handle"></div></div>
+                <div id="seller-profile-content"></div>
+            </div>
+        </div>
+
+        <!-- ============ CHAT OVERLAY ============ -->
+        <div id="chat-overlay" class="chat-overlay hidden">
+            <header class="chat-header" id="chat-header">
+                <button class="chat-back" id="chat-back" aria-label="Volver">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button class="chat-seller-info" id="chat-seller-info" type="button">
+                    <div class="chat-avatar" id="chat-avatar"></div>
+                    <div class="chat-seller-text">
+                        <span class="chat-seller-username" id="chat-seller-username">@usuario</span>
+                        <span class="chat-seller-role" id="chat-seller-role">Vendedor</span>
+                    </div>
+                </button>
+            </header>
+
+            <div class="chat-context-banner hidden" id="chat-context-banner">
+                <i class="fa-solid fa-tag"></i>
+                <span>Sobre esta publicación:</span>
+                <strong id="chat-context-name">—</strong>
+                <button id="chat-context-open" type="button">Ver</button>
+            </div>
+
+            <div class="chat-messages" id="chat-messages"></div>
+
+            <button class="chat-new-messages hidden" id="chat-new-messages" type="button">
+                <i class="fa-solid fa-arrow-down"></i>
+                <span id="chat-new-messages-text">1 mensaje nuevo</span>
+            </button>
+
+            <div class="chat-composer">
+                <textarea id="chat-input" placeholder="Escribe un mensaje…" rows="1" maxlength="2000"></textarea>
+                <button id="chat-send" aria-label="Enviar">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+
+            <div class="chat-message-menu hidden" id="chat-message-menu"></div>
+        </div>
+
+        <!-- ============ MODAL AUTH ============ -->
+        <div id="auth-modal" class="modal-backdrop hidden">
+            <div class="auth-modal-pro">
+
+                <div class="auth-hero">
+                    <button class="auth-close" id="auth-close" aria-label="Cerrar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="auth-hero-icon" id="auth-hero-icon">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <h3 class="auth-hero-title" id="auth-hero-title">Bienvenido a PipGo</h3>
+                    <p class="auth-hero-subtitle" id="auth-hero-subtitle">Compra y vende cerca de ti</p>
+                </div>
+
+                <div class="auth-tabs-pro" id="auth-tabs-pro">
+                    <button class="auth-tab-pro active" data-auth="login" type="button">
+                        <i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión
+                    </button>
+                    <button class="auth-tab-pro" data-auth="register" type="button">
+                        <i class="fa-solid fa-user-plus"></i> Crear cuenta
+                    </button>
+                </div>
+
+                <form id="login-form" class="auth-form-pro" autocomplete="on">
+                    <div class="auth-field">
+                        <label for="login-email">Correo electrónico</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <input type="email" id="login-email" autocomplete="email"
+                                placeholder="Correo" required>
+                        </div>
+                    </div>
+
+                    <div class="auth-field">
+                        <label for="login-password">Contraseña</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-lock auth-input-icon"></i>
+                            <input type="password" id="login-password" autocomplete="current-password"
+                                placeholder="••••••••" required>
+                            <button type="button" class="auth-input-toggle" data-toggle="login-password" aria-label="Mostrar contraseña">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" class="auth-link-btn" id="btn-forgot-password">
+                        <i class="fa-solid fa-key"></i> ¿Olvidaste tu contraseña?
+                    </button>
+
+                    <button type="submit" class="btn-primary btn-large auth-submit">
+                        <i class="fa-solid fa-right-to-bracket"></i> Entrar
+                    </button>
+                </form>
+
+                <form id="register-form" class="auth-form-pro hidden" autocomplete="on">
+                    <div class="auth-field">
+                        <label for="register-username">Nombre de usuario</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-at auth-input-icon"></i>
+                            <input type="text" id="register-username" autocomplete="username"
+                                placeholder="Username" minlength="3" maxlength="20" required>
+                        </div>
+                        <p class="auth-field-hint">Letras (incluida ñ), números, "_" y ".". Sin espacios.</p>
+                    </div>
+
+                    <div class="auth-field">
+                        <label for="register-email">Correo electrónico</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <input type="email" id="register-email" autocomplete="email"
+                                placeholder="Correo" required>
+                        </div>
+                    </div>
+
+                    <div class="auth-field">
+                        <label for="register-password">Contraseña</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-lock auth-input-icon"></i>
+                            <input type="password" id="register-password" autocomplete="new-password"
+                                placeholder="Mínimo 6 caracteres" minlength="6" required>
+                            <button type="button" class="auth-input-toggle" data-toggle="register-password" aria-label="Mostrar contraseña">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Checkbox de aceptación legal -->
+                    <label class="auth-legal-check" id="register-legal-wrap">
+                        <input type="checkbox" id="register-accept-legal">
+                        <span class="legal-check-text">
+                            He leído y acepto los
+                            <button type="button" class="legal-link" data-legal-open="terms">Términos y Condiciones</button>
+                            y el
+                            <button type="button" class="legal-link" data-legal-open="privacy">Aviso de Privacidad</button>
+                            de PipGo.
+                        </span>
+                    </label>
+
+                    <button type="submit" class="btn-primary btn-large auth-submit">
+                        <i class="fa-solid fa-user-plus"></i> Crear cuenta
+                    </button>
+                </form>
+
+                <div id="recover-view" class="auth-form-pro hidden">
+                    <div class="auth-recover-hero">
+                        <div class="auth-recover-icon">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <h4>Recuperar contraseña</h4>
+                        <p>Escribe el correo con el que te registraste. Un administrador revisará tu solicitud; si es aprobada, recibirás un enlace en tu correo para definir una nueva contraseña.</p>
+                    </div>
+
+                    <div class="auth-field">
+                        <label for="recover-email">Correo electrónico</label>
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <input type="email" id="recover-email" autocomplete="email"
+                                placeholder="tucorreo@ejemplo.com" required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-primary btn-large auth-submit" id="btn-submit-recover">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar solicitud
+                    </button>
+
+                    <button type="button" class="auth-link-btn" id="btn-back-to-login">
+                        <i class="fa-solid fa-arrow-left"></i> Volver a iniciar sesión
+                    </button>
+                </div>
+
+                <div id="auth-error" class="form-error hidden"></div>
+                <div id="auth-success" class="form-success hidden"></div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL LEGAL (Aviso de Privacidad + Términos) ============ -->
+        <div id="legal-modal" class="modal-backdrop hidden">
+            <div class="legal-modal-pro">
+                <header class="legal-header">
+                    <button class="legal-close" id="legal-close" aria-label="Cerrar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="legal-header-icon variant-privacy" id="legal-header-icon">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 class="legal-header-title" id="legal-title">Aviso de Privacidad</h2>
+                    <p class="legal-header-subtitle" id="legal-subtitle">Tratamiento de datos personales</p>
+                </header>
+
+                <div class="legal-tabs" id="legal-tabs">
+                    <button class="legal-tab active" data-legal-tab="privacy" type="button">
+                        <i class="fa-solid fa-user-shield"></i> Privacidad
+                    </button>
+                    <button class="legal-tab" data-legal-tab="terms" type="button">
+                        <i class="fa-solid fa-file-contract"></i> Términos
+                    </button>
+                </div>
+
+                <div class="legal-body" id="legal-body"></div>
+
+                <footer class="legal-footer">
+                    <p class="legal-updated" id="legal-updated"></p>
+                    <button class="btn-primary" id="legal-accept" type="button">
+                        <i class="fa-solid fa-check"></i> Entendido
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <!-- ============ MODAL FILTROS ============ -->
+        <div id="filter-modal" class="modal-backdrop hidden">
+            <div class="auth-modal">
+                <div class="auth-header">
+                    <h3>Filtros</h3>
+                    <button class="modal-close" id="filter-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="input-group">
+                    <label for="filter-category">Categoría</label>
+                    <div class="select-pro-wrap">
+                        <i class="fa-solid fa-tag select-pro-icon"></i>
+                        <select id="filter-category">
+                            <option value="">Todas</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="filter-seller">Tipo de vendedor</label>
+                    <div class="select-pro-wrap">
+                        <i class="fa-solid fa-user select-pro-icon"></i>
+                        <select id="filter-seller">
+                            <option value="">Todos</option>
+                            <option value="calle">Puesto de calle</option>
+                            <option value="establecimiento">Establecimiento</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                    </div>
+                </div>
+                <button class="btn-primary btn-large" id="filter-apply" style="margin-top:16px;">Aplicar</button>
+            </div>
+        </div>
+
+        <!-- ============ MODAL AJUSTES ============ -->
+        <div id="settings-modal" class="modal-backdrop hidden">
+            <div class="auth-modal settings-modal-pro">
+                <div class="auth-header">
+                    <h3>Ajustes</h3>
+                    <button class="modal-close" id="settings-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="settings-list" id="settings-list"></div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL VISTA PREVIA ============ -->
+        <div id="preview-modal" class="modal-backdrop hidden">
+            <div class="auth-modal preview-modal-pro">
+                <div class="auth-header">
+                    <h3>Vista previa</h3>
+                    <button class="modal-close" id="preview-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="preview-body" class="preview-body"></div>
+                <div class="admin-confirm-actions">
+                    <button class="btn-outline" id="preview-back" type="button">Volver a editar</button>
+                    <button class="btn-primary" id="preview-publish" type="button">
+                        <i class="fa-solid fa-paper-plane"></i> Publicar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL BORRADOR ============ -->
+        <div id="draft-modal" class="modal-backdrop hidden">
+            <div class="auth-modal">
+                <div class="auth-header">
+                    <h3>Borrador guardado</h3>
+                    <button class="modal-close" id="draft-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p class="unsaved-text">Encontramos una publicación sin terminar. ¿Quieres continuar donde la dejaste?</p>
+                <div class="admin-confirm-actions">
+                    <button class="btn-outline" id="draft-discard" type="button">Descartar</button>
+                    <button class="btn-primary" id="draft-continue" type="button">
+                        <i class="fa-solid fa-arrow-right"></i> Continuar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL SALIR SIN GUARDAR ============ -->
+        <div id="unsaved-modal" class="modal-backdrop hidden">
+            <div class="auth-modal">
+                <div class="auth-header">
+                    <h3>Salir sin guardar</h3>
+                    <button class="modal-close" id="unsaved-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p class="unsaved-text">Se perderán los cambios realizados en esta publicación.</p>
+                <div class="admin-confirm-actions">
+                    <button class="btn-outline" id="unsaved-cancel" type="button">Cancelar</button>
+                    <button class="btn-primary" id="unsaved-confirm" type="button">
+                        <i class="fa-solid fa-right-from-bracket"></i> Salir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL CONFIRMACIÓN GENÉRICA ============ -->
+        <div id="confirm-modal" class="modal-backdrop hidden">
+            <div class="auth-modal">
+                <div class="auth-header">
+                    <h3 id="confirm-title">Confirmar</h3>
+                    <button class="modal-close" id="confirm-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p id="confirm-text" class="unsaved-text"></p>
+                <div class="admin-confirm-actions">
+                    <button class="btn-outline" id="confirm-cancel" type="button">Cancelar</button>
+                    <button class="btn-primary" id="confirm-ok" type="button">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL SELLER (quiero vender) ============ -->
+        <div id="seller-modal" class="modal-backdrop hidden">
+            <div class="auth-modal seller-modal-pro">
+                <div class="auth-header">
+                    <h3 id="seller-modal-title">Quiero vender</h3>
+                    <button class="modal-close" id="seller-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="seller-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- ============ MODAL CONFIRM ADMIN ============ -->
+        <div id="admin-confirm-modal" class="modal-backdrop hidden">
+            <div class="auth-modal admin-confirm-modal">
+                <div class="auth-header">
+                    <h3 id="admin-confirm-title">Confirmar</h3>
+                    <button class="modal-close" id="admin-confirm-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p id="admin-confirm-text"></p>
+                <div class="input-group hidden" id="admin-confirm-input-wrap">
+                    <label id="admin-confirm-input-label"></label>
+                    <textarea id="admin-confirm-input" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="form-error hidden" id="admin-confirm-error"></div>
+                <div class="admin-confirm-actions">
+                    <button class="btn-outline" id="admin-confirm-cancel">Cancelar</button>
+                    <button class="btn-primary" id="admin-confirm-ok">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ NAVBAR ============ -->
+        <nav class="bottom-nav" aria-label="Navegación principal">
+            <button class="nav-item active" data-view="home" aria-label="Inicio">
+                <i class="fa-solid fa-house"></i><span>Inicio</span>
+            </button>
+            <button class="nav-item" data-view="search" aria-label="Buscar">
+                <i class="fa-solid fa-magnifying-glass"></i><span>Buscar</span>
+            </button>
+            <button class="nav-item nav-center" data-view="anunciarme" aria-label="Crear publicación">
+                <i class="fa-solid fa-plus"></i><span>Anunciarme</span>
+            </button>
+            <button class="nav-item" data-view="messaging" aria-label="Mensajes">
+                <i class="fa-solid fa-comments"></i><span>Mensajes</span>
+            </button>
+            <button class="nav-item" data-view="perfil" aria-label="Perfil">
+                <i class="fa-solid fa-user"></i><span>Perfil</span>
+            </button>
+        </nav>
+    </div>
+</div>
+
+<div id="toast" class="toast hidden">
+    <i class="fa-solid fa-circle-check" id="toast-icon"></i>
+    <span id="toast-message"></span>
+</div>
+
+<input type="file" id="avatar-input" accept="image/*" hidden>
+
+<!-- ============ CORE ============ -->
+<script src="js/core/app-state.js"></script>
+<script src="js/core/logger.js"></script>
+<script src="js/core/error-handler.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/navigation.js"></script>
+
+<!-- ============ CONFIG ============ -->
+<script src="js/config/firebase-config.js"></script>
+<script src="js/config/config.js"></script>
+<script src="js/config/units.js"></script>
+<script src="js/config/category-config.js"></script>
+
+<!-- ============ UTILS ============ -->
+<script src="js/utils/validators.js"></script>
+<script src="js/utils/formatters.js"></script>
+<script src="js/utils/dom.js"></script>
+
+<!-- ============ SERVICES ============ -->
+<script src="js/services/permission-service.js"></script>
+<script src="js/services/auth-service.js"></script>
+<script src="js/services/user-service.js"></script>
+<script src="js/services/publication-service.js"></script>
+<script src="js/services/favorite-service.js"></script>
+<script src="js/services/seller-service.js"></script>
+<script src="js/services/image-service.js"></script>
+<script src="js/services/location-service.js"></script>
+<script src="js/services/connectivity-service.js"></script>
+<script src="js/services/haptics-service.js"></script>
+<script src="js/services/admin-service.js"></script>
+
+<!-- Mensajería + perfil público de vendedor -->
+<script src="js/services/seller-profile-service.js"></script>
+<script src="js/services/conversation-service.js"></script>
+<script src="js/services/message-service.js"></script>
+
+    <script src="js/services/follow-service.js"></script>
+<!-- ============ COMPONENTS ============ -->
+<script src="js/components/toast.js"></script>
+<script src="js/components/splash.js"></script>
+<script src="js/components/connectivity-ui.js"></script>
+<script src="js/components/confirm-dialog.js"></script>
+
+<!-- ============ FEATURES ============ -->
+<script src="js/features/auth/auth-ui.js"></script>
+<script src="js/features/profile/profile-ui.js"></script>
+<script src="js/features/publications/publication-ui.js"></script>
+<script src="js/features/favorites/favorite-ui.js"></script>
+<script src="js/features/seller/seller-ui.js"></script>
+<script src="js/features/admin/admin-ui.js"></script>
+
+<!-- SellerProfileUI antes que MessagingUI (MessagingUI puede abrirlo) -->
+<script src="js/features/seller-profile/seller-profile-ui.js"></script>
+<script src="js/features/messaging/messaging-ui.js"></script>
+
+<!-- ============ LEGAL (antes de app.js) ============ -->
+<script src="js/features/legal/legal-ui.js"></script>
+
+<!-- ============ BOOTSTRAP ============ -->
+<script src="js/app.js"></script>
+</body>
+</html>
