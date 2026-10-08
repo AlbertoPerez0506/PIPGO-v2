@@ -1,5 +1,15 @@
 /* =====================================================
    PIPGO · APP BOOTSTRAP
+   -----------------------------------------------------
+   PLAN C:
+   - Ya no se dispara GPS automáticamente al arrancar.
+   - El handler global de Escape respeta el modal de
+     confirmación genérico.
+
+   PLAN D (fix):
+   - Cuando el usuario hace login estando YA en la vista
+     Mensajes (viendo "Inicia sesión"), hay que refrescar
+     el contenido. Antes el refresh solo ocurría en logout.
    ===================================================== */
 
 (function () {
@@ -55,14 +65,14 @@
                     updateLocationChip(cityName);
                     return;
                 }
-            } catch (e) {}
+            } catch (e) { /* silencioso: el usuario verá el estado final */ }
 
             const cached = Storage.get('user_city', null);
             if (cached) {
                 AppState.userCity = cached;
                 updateLocationChip(cached);
             } else {
-                updateLocationChip('Emiliano Zapata');
+                updateLocationChip('Sin ubicación');
             }
         })();
 
@@ -79,7 +89,7 @@
             AppState.userCity = cached;
             updateLocationChip(cached);
         } else {
-            updateLocationChip('Detectando…');
+            updateLocationChip('Sin ubicación');
         }
 
         const chip = document.getElementById('location-chip');
@@ -87,12 +97,12 @@
             chip.addEventListener('click', async () => {
                 Toast.info('Detectando tu ubicación…');
                 await detectAndUpdateCity();
-                if (AppState.userCity) Toast.success(`Ubicación: ${AppState.userCity}`);
+                if (AppState.userCity) {
+                    Toast.success(`Ubicación: ${AppState.userCity}`);
+                } else {
+                    Toast.warning('No pudimos detectar tu ubicación.');
+                }
             });
-        }
-
-        if (!cached) {
-            setTimeout(detectAndUpdateCity, 800);
         }
     }
 
@@ -299,7 +309,6 @@
                             if (window.SellerProfileUI && SellerProfileUI.refreshFollowState) {
                                 SellerProfileUI.refreshFollowState(action.sellerUid);
                             }
-                            // Refrescar el corazón del sheet de producto si está abierto
                             if (window.PublicationUI && PublicationUI.refreshSheetFollowState) {
                                 PublicationUI.refreshSheetFollowState(action.sellerUid);
                             }
@@ -345,8 +354,15 @@
                     PublicationUI.stopHomeSubscription) {
                     PublicationUI.stopHomeSubscription();
                 }
-                if (AppState.currentView === 'messaging' && window.MessagingUI) {
-                    MessagingUI.onEnterMessaging();
+            }
+
+            // FIX: refrescar la vista Mensajes cada vez que cambia el
+            // estado de autenticación (login Y logout). Antes solo se
+            // refrescaba en logout, por eso tras iniciar sesión estando
+            // en Mensajes la vista seguía mostrando "Inicia sesión".
+            if (AppState.currentView === 'messaging' && window.MessagingUI) {
+                try { MessagingUI.onEnterMessaging(); } catch (e) {
+                    Logger.error('Refresh messaging post-auth falló', e);
                 }
             }
 
@@ -364,6 +380,12 @@
     function initGlobalEscapeHandler() {
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
+
+            const confirmModal = document.getElementById('confirm-modal');
+            if (confirmModal && !confirmModal.classList.contains('hidden')) {
+                e.preventDefault();
+                return;
+            }
 
             if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) {
                 e.preventDefault(); MessagingUI.closeChat(); return;

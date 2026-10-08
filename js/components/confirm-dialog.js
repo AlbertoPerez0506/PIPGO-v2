@@ -2,6 +2,15 @@
    PIPGO · CONFIRM DIALOG
    Modal de confirmación genérico (promesa).
    Reemplaza window.confirm en toda la app.
+   -----------------------------------------------------
+   PLAN C:
+   - El listener de Escape usa capture:true y
+     stopImmediatePropagation() para que NINGÚN otro
+     handler (por ejemplo, el global de app.js que
+     cierra overlays) reaccione al mismo ESC cuando
+     el modal de confirmación está abierto.
+   - Sin esto, un ESC con el confirm encima de un
+     product sheet cerraba AMBAS cosas a la vez.
    ===================================================== */
 
 (function () {
@@ -28,12 +37,16 @@
         modal.addEventListener('click', (e) => {
             if (e.target === modal) resolve(false);
         });
+
+        // Capture + stopImmediatePropagation: garantiza que el ESC
+        // se consuma aquí y no llegue al handler global de app.js.
         document.addEventListener('keydown', (e) => {
-            if (!modal.classList.contains('hidden') && e.key === 'Escape') {
-                e.preventDefault();
-                resolve(false);
-            }
-        });
+            if (e.key !== 'Escape') return;
+            if (!modal || modal.classList.contains('hidden')) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            resolve(false);
+        }, true);
     }
 
     function resolve(value) {

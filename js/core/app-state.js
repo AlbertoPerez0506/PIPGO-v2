@@ -1,5 +1,12 @@
 /* =====================================================
    PIPGO · APP STATE
+   -----------------------------------------------------
+   PLAN D:
+   - resetSession() también limpia currentUser.
+     Antes dependía de que app.js lo hubiera seteado
+     a null antes de llamar a resetSession; si se
+     invocaba desde otro lado, quedaba una sesión
+     "fantasma" en memoria.
    ===================================================== */
 
 window.AppState = {
@@ -38,6 +45,7 @@ window.AppState = {
     prefSoundsEnabled: false,
 
     resetSession() {
+        this.currentUser = null;
         this.currentProfile = null;
         this.currentPublicProfile = null;
         this.favoriteIds = new Set();

@@ -2,6 +2,13 @@
    PIPGO · FORMATTERS
    Formateo de texto, URLs, precios, tiempo, distancia
    y horarios. Funciones puras, sin side effects.
+   -----------------------------------------------------
+   PLAN D:
+   - placeholderImage(): data URI SVG local para usar
+     como fallback cuando una publicación no tiene
+     imagen. Reemplaza https://via.placeholder.com
+     (dependencia de red, bloqueada por algunos CSP
+     y redes corporativas).
    ===================================================== */
 
 window.Formatters = {
@@ -26,6 +33,25 @@ window.Formatters = {
             if (allowedProtocols.includes(u.protocol)) return u.href;
         } catch (e) {}
         return '';
+    },
+
+    /**
+     * Placeholder local (data URI SVG). No depende de red,
+     * no lo bloquea CSP, no hace fetch adicional.
+     * Se cachea en memoria la primera vez que se genera.
+     */
+    _placeholderCache: null,
+    placeholderImage() {
+        if (this._placeholderCache) return this._placeholderCache;
+        const svg = [
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'>",
+            "<rect width='300' height='300' fill='#F2F2F2'/>",
+            "<path d='M90 200 L130 150 L170 200 L200 170 L230 200 Z' fill='#D9D9D9'/>",
+            "<circle cx='110' cy='115' r='16' fill='#D9D9D9'/>",
+            "</svg>"
+        ].join('');
+        this._placeholderCache = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        return this._placeholderCache;
     },
 
     formatRelativeTime(timestamp) {

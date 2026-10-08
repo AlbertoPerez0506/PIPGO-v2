@@ -3,6 +3,10 @@
    Perfil + Ajustes + edición inline de username.
    Incluye accesos a Aviso de Privacidad y Términos.
    Incluye pestaña "Siguiendo" completamente funcional.
+   -----------------------------------------------------
+   PLAN D:
+   - buildCard usa Formatters.placeholderImage() en
+     vez de via.placeholder.com.
    ===================================================== */
 
 (function () {
@@ -420,7 +424,8 @@
         card.className = 'product-card';
         card.dataset.id = pub.id;
 
-        const safeImg = Formatters.safeUrl(pub.mainImage) || 'https://via.placeholder.com/300';
+        // PLAN D: fallback local, sin red.
+        const safeImg = Formatters.safeUrl(pub.mainImage) || Formatters.placeholderImage();
         const isSold = pub.status === 'sold';
 
         const imgWrap = document.createElement('div');
@@ -716,7 +721,6 @@
             return;
         }
 
-        // Unfollow desde la pestaña Siguiendo
         const unfollowBtn = e.target.closest('[data-unfollow-uid]');
         if (unfollowBtn) {
             e.preventDefault();
@@ -725,7 +729,6 @@
             return;
         }
 
-        // Abrir perfil del vendedor desde la tarjeta de Siguiendo
         const followingCard = e.target.closest('.following-card');
         if (followingCard && followingCard.dataset.followingUid) {
             e.preventDefault();

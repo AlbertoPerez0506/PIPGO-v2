@@ -4,6 +4,7 @@
    Orden: core → layout → components → pages
    ===================================================== */
 
+/* main.css */
 @import url('./core/variables.css');
 @import url('./core/base.css');
 @import url('./layout/layout.css');

@@ -1,15 +1,19 @@
 /* =====================================================
    PIPGO · FIREBASE CONFIG
-   Proyecto: PIPGO-v2
+   Proyecto: pipgo-1b3ba
+   -----------------------------------------------------
+   Compat SDK (CDN) — no modular.
+   Compatible con firebase-app-compat.js,
+   firebase-auth-compat.js y firebase-firestore-compat.js.
    ===================================================== */
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD-jaLMFPRLpuNkB-GSex7fiPSi6RqCJLY",
-    authDomain: "pipgo-v2.firebaseapp.com",
-    projectId: "pipgo-v2",
-    storageBucket: "pipgo-v2.firebasestorage.app",
-    messagingSenderId: "432829501406",
-    appId: "1:432829501406:web:cad5cd72fdc03f48c8d74f"
+    apiKey: "AIzaSyBEGpdUzxEFJ9o5uyfE1Z4uxwjShwKvYH0",
+    authDomain: "pipgo-1b3ba.firebaseapp.com",
+    projectId: "pipgo-1b3ba",
+    storageBucket: "pipgo-1b3ba.firebasestorage.app",
+    messagingSenderId: "516598037905",
+    appId: "1:516598037905:web:b70786f2270eb622822e30"
 };
 
 firebase.initializeApp(firebaseConfig);

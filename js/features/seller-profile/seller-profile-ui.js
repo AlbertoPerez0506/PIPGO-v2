@@ -1,18 +1,11 @@
 /* =====================================================
    PIPGO · SELLER PROFILE UI
    Bottom sheet con el perfil público del vendedor.
-   Reutilizado desde Product Sheet y Chat Header.
    -----------------------------------------------------
-   FIX:
-   - Sólo renderiza el perfil completo si el doc tiene
-     sellerApproved === true. Antes se mostraba cualquier
-     perfil con username, y el botón "Seguir" fallaba al
-     pulsarse porque FollowService (y las reglas de
-     Firestore) rechazan seguir a usuarios que no son
-     vendedores aprobados.
-   - Dos estados vacíos diferenciados:
-       · 'unavailable' → el perfil no existe o no tiene username.
-       · 'not-seller'  → existe pero no es vendedor aprobado.
+   FIX 2026:
+   - Nunca muestra "Enviar mensaje" en el propio perfil.
+   - Sólo renderiza perfil completo si sellerApproved === true.
+   - Dos estados vacíos: unavailable / not-seller.
    ===================================================== */
 
 (function () {
@@ -88,6 +81,17 @@
                 </div>`;
             return;
         }
+        if (kind === 'self') {
+            contentEl.innerHTML = `
+                <div class="seller-profile-body">
+                    <div class="seller-profile-empty">
+                        <i class="fa-solid fa-user-check"></i>
+                        <h4>Este es tu perfil</h4>
+                        <p>Administra tus publicaciones y ajustes desde la pestaña Perfil.</p>
+                    </div>
+                </div>`;
+            return;
+        }
         contentEl.innerHTML = `
             <div class="seller-profile-body">
                 <div class="seller-profile-empty">
@@ -153,6 +157,9 @@
     async function render(uid, preload) {
         renderSkeleton();
 
+        // Si es mi propio perfil, lo mostramos simplificado.
+        const isSelf = AppState.currentUser && AppState.currentUser.uid === uid;
+
         let profile = preload;
         if (!profile) {
             try { profile = await SellerProfileService.getPublicProfile(uid); }
@@ -162,20 +169,21 @@
         if (!isOpen() || currentUid !== uid) return;
         currentProfileCache = profile;
 
-        // 1) El perfil no existe o no tiene username público.
+        if (isSelf) {
+            renderEmptyState('self');
+            return;
+        }
+
         if (!profile || !profile.username) {
             renderEmptyState('unavailable');
             return;
         }
 
-        // 2) Existe pero no es vendedor aprobado. Aquí es donde
-        //    antes se mostraba el botón "Seguir" y fallaba.
         if (profile.sellerApproved !== true) {
             renderEmptyState('not-seller');
             return;
         }
 
-        // 3) Vendedor aprobado → perfil completo
         const username = escapeHtml(profile.username);
         const displayName = profile.displayName ? escapeHtml(profile.displayName) : '';
         const description = profile.description ? escapeHtml(profile.description) : '';

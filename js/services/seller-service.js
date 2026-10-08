@@ -2,6 +2,11 @@
    PIPGO · SELLER SERVICE
    Solicitudes de vendedor (una sola cuenta, distintos permisos).
    Soporta envío inicial y reenvío tras rechazo / needs_info.
+   -----------------------------------------------------
+   CAMBIOS PLAN B:
+   - Se eliminó listPending(): era código muerto. Nadie
+     lo llamaba. El admin usa AdminService.listApplications(),
+     que sí usa el índice correcto.
    ===================================================== */
 
 window.SellerService = {
@@ -57,14 +62,5 @@ window.SellerService = {
     async getApplication(uid) {
         const snap = await db.collection(CONFIG.COLLECTIONS.SELLER_APPLICATIONS).doc(uid).get();
         return snap.exists ? snap.data() : null;
-    },
-
-    async listPending() {
-        const snap = await db.collection(CONFIG.COLLECTIONS.SELLER_APPLICATIONS)
-            .where('status', '==', 'pending')
-            .orderBy('submittedAt', 'desc')
-            .limit(50)
-            .get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 };

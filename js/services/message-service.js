@@ -2,6 +2,20 @@
    PIPGO · MESSAGE SERVICE
    Mensajes por conversación. Expiración a 7 días.
    Sin TTL ni Cloud Functions. Limpieza oportunista.
+   -----------------------------------------------------
+   PLAN B — Verificación contra Rules nuevas:
+
+   - editMessage:      update con senderId/createdAt
+                       inmutables → pasa branch A.
+   - deleteForMe:      update SOLO de hiddenFor →
+                       pasa branch B (affectedKeys.hasOnly).
+   - deleteForEveryone: update de deletedForEveryone,
+                       text, updatedAt con senderId
+                       inmutable → pasa branch A.
+   - cleanupExpiredMessages: DELETE de mensajes con
+                       expiresAt ≤ now. Requiere la
+                       enmienda de Rules (delete permitido
+                       a participantes si ya expiró).
    ===================================================== */
 
 (function () {
@@ -171,6 +185,9 @@
     /**
      * Limpieza oportunista: elimina físicamente mensajes expirados.
      * Se llama al abrir el chat. No usa polling.
+     *
+     * Requiere que las Rules permitan delete a participantes sobre
+     * mensajes cuyo expiresAt ya pasó (ver enmienda de Plan B).
      */
     async function cleanupExpiredMessages(conversationId) {
         if (!conversationId) return 0;

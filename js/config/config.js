@@ -17,12 +17,13 @@ window.CONFIG = {
     REVERSE_GEO_TIMEOUT_MS: 6000,
 
     COLLECTIONS: {
-        USERS: 'usuarios',
-        USERNAMES: 'usernames',
-        PUBLICATIONS: 'publicaciones',
-        FAVORITES: 'favoritos',
-        SELLER_APPLICATIONS: 'solicitudesVendedor',
-        PUBLIC_PROFILES: 'perfilesPublicos',
-        CONVERSATIONS: 'conversaciones'
-    }
+    USERS: 'usuarios',
+    USERNAMES: 'usernames',
+    PUBLICATIONS: 'publicaciones',
+    FAVORITES: 'favoritos',
+    SELLER_APPLICATIONS: 'solicitudesVendedor',
+    PUBLIC_PROFILES: 'perfilesPublicos',
+    CONVERSATIONS: 'conversaciones',
+    PASSWORD_RESET_REQUESTS: 'solicitudesRecuperacion'
+}
 };

@@ -1,0 +1,257 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // HELPERS GLOBALES
+    // Nota: FRC no permite `let`, `if`, `for`. Toda función es
+    // una única expresión de retorno.
+    // ============================================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myUid() {
+      return request.auth.uid;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && myUid() == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ivanalbertoperezramirez@gmail.com'
+        || request.auth.token.admin == true
+      );
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)).data;
+    }
+
+    function isApprovedSeller(uid) {
+      return userDoc(uid).role == 'seller'
+          && userDoc(uid).sellerStatus == 'approved'
+          && userDoc(uid).active == true;
+    }
+
+    function validPublicationStatusTransition(oldStatus, newStatus) {
+      return oldStatus == newStatus
+          || (oldStatus == 'active' && newStatus in ['sold', 'deleted'])
+          || (oldStatus == 'sold'   && newStatus == 'deleted');
+    }
+
+    // El dueño solo puede modificar campos seguros de su usuario.
+    // Prohibido: role, admin, active, uid, createdAt, email.
+    // sellerStatus: solo puede ir a 'pending' desde estado no aprobado.
+    function ownerCanUpdateUser(oldData, newData) {
+      return !newData.diff(oldData).affectedKeys()
+                .hasAny(['role', 'admin', 'active', 'uid', 'createdAt', 'email'])
+          && (
+               !newData.diff(oldData).affectedKeys().hasAny(['sellerStatus'])
+               ||
+               (newData.sellerStatus == 'pending'
+                && oldData.sellerStatus in ['none', 'rejected', 'needs_info'])
+             );
+    }
+
+    // El dueño solo puede cambiar identidad pública (username, avatar).
+    // Los campos del negocio los escribe únicamente el admin al aprobar.
+    function ownerCanUpdatePublicProfile(oldData, newData) {
+      return !newData.diff(oldData).affectedKeys().hasAny([
+        'uid',
+        'sellerApproved',
+        'displayName', 'businessName', 'sellerType',
+        'category', 'description', 'phone',
+        'city', 'state', 'socialUrl', 'contactMethod'
+      ]);
+    }
+
+    // ============================================================
+    // USUARIOS
+    // ============================================================
+    match /usuarios/{uid} {
+
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isAdmin()
+        || (isOwner(uid)
+            && request.resource.data.uid == uid
+            && request.resource.data.role == 'user'
+            && request.resource.data.sellerStatus == 'none'
+            && request.resource.data.active == true
+            && request.resource.data.admin == false);
+
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && ownerCanUpdateUser(resource.data, request.resource.data));
+
+      allow delete: if isAdmin();
+
+      // ---- Subcolección: siguiendo (vendedores seguidos) ----
+      match /siguiendo/{sellerUid} {
+        allow read:   if isOwner(uid);
+        allow create: if isOwner(uid)
+                      && request.resource.data.sellerUid == sellerUid;
+        allow delete: if isOwner(uid);
+      }
+
+      // ---- Subcolección: favoritos ----
+      match /favoritos/{pubId} {
+        allow read:   if isOwner(uid);
+        allow create: if isOwner(uid)
+                      && request.resource.data.publicationId == pubId;
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // ============================================================
+    // USERNAMES (índice único)
+    // ============================================================
+    match /usernames/{normalized} {
+      allow read:   if true;
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == myUid();
+      allow update, delete: if isSignedIn()
+                            && resource.data.uid == myUid();
+    }
+
+    // ============================================================
+    // PERFILES PÚBLICOS
+    // ============================================================
+    match /perfilesPublicos/{uid} {
+      allow read: if true;
+
+      allow create: if isAdmin()
+        || (isOwner(uid)
+            && request.resource.data.uid == uid
+            && request.resource.data.sellerApproved == false);
+
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && ownerCanUpdatePublicProfile(resource.data, request.resource.data));
+
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // PUBLICACIONES
+    // ============================================================
+    match /publicaciones/{pubId} {
+
+      allow read: if
+        resource.data.status in ['active', 'sold']
+        || (isSignedIn() && resource.data.userId == myUid())
+        || isAdmin();
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == myUid()
+        && request.resource.data.status == 'active'
+        && isApprovedSeller(myUid());
+
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && resource.data.userId == myUid()
+            && request.resource.data.userId == myUid()
+            && validPublicationStatusTransition(
+                 resource.data.status,
+                 request.resource.data.status));
+
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == myUid());
+    }
+
+    // ============================================================
+    // SOLICITUDES DE VENDEDOR
+    // ============================================================
+    match /solicitudesVendedor/{uid} {
+
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create, update: if isAdmin()
+        || (isOwner(uid)
+            && request.resource.data.status == 'pending'
+            && request.resource.data.uid == uid);
+
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // SOLICITUDES DE RECUPERACIÓN DE CONTRASEÑA
+    // ============================================================
+    match /solicitudesRecuperacion/{docId} {
+
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 5
+        && request.resource.data.email.size() <= 320;
+
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ============================================================
+    // CONVERSACIONES + MENSAJES
+    // ============================================================
+    match /conversaciones/{convId} {
+
+      // FIX: `is list` rompe la inferencia del query y hacía que
+      // Firestore devolviera permission-denied sobre el WHERE
+      // completo. `in` ya maneja el caso campo inexistente.
+      function isParticipantOf(res) {
+        return isSignedIn()
+            && res != null
+            && myUid() in res.data.participantIds;
+      }
+
+      allow read: if isParticipantOf(resource);
+
+      allow create: if isSignedIn()
+        && request.resource.data.participantIds is list
+        && request.resource.data.participantIds.size() == 2
+        && myUid() in request.resource.data.participantIds
+        && request.resource.data.status == 'active';
+
+      allow update: if isParticipantOf(resource)
+        && request.resource.data.participantIds == resource.data.participantIds;
+
+      allow delete: if isAdmin();
+
+      // ---- Mensajes ----
+      match /mensajes/{msgId} {
+
+        function canAccessConv() {
+          return isSignedIn()
+            && myUid() in get(/databases/$(database)/documents/conversaciones/$(convId))
+                 .data.participantIds;
+        }
+
+        allow read: if canAccessConv();
+
+        allow create: if canAccessConv()
+          && request.resource.data.senderId == myUid();
+
+        // Branch A: sender edita / soft-deletea su mensaje
+        //           (senderId y createdAt inmutables).
+        // Branch B: cualquier participante "elimina para mí"
+        //           (solo modifica hiddenFor).
+        allow update: if canAccessConv()
+          && (
+               (resource.data.senderId == myUid()
+                && request.resource.data.senderId == resource.data.senderId
+                && request.resource.data.createdAt == resource.data.createdAt)
+               ||
+               (request.resource.data.diff(resource.data)
+                    .affectedKeys().hasOnly(['hiddenFor']))
+             );
+
+        // Cleanup oportunista de mensajes expirados por participantes.
+        allow delete: if isAdmin()
+                      || (canAccessConv()
+                          && resource.data.expiresAt <= request.time);
+      }
+    }
+  }
+}

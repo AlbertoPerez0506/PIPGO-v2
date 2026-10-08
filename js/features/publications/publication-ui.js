@@ -449,7 +449,8 @@
         card.className = 'product-card';
         card.dataset.id = pub.id;
 
-        const safeImg = Formatters.safeUrl(pub.mainImage) || 'https://via.placeholder.com/300';
+        // PLAN D: fallback local, sin red.
+        const safeImg = Formatters.safeUrl(pub.mainImage) || Formatters.placeholderImage();
         const categoryChip = pub.category
             ? `<span class="product-category-chip">${Formatters.escapeHtml(pub.category)}</span>`
             : '';
@@ -1423,7 +1424,7 @@
     }
 
     function buildPreviewHtml(data) {
-        const safeImg = Formatters.safeUrl(data.mainImagePreviewUrl) || 'https://via.placeholder.com/300';
+        const safeImg = Formatters.safeUrl(data.mainImagePreviewUrl) || Formatters.placeholderImage();
         const categoryChip = data.category
             ? `<span class="sheet-category-badge">${Formatters.escapeHtml(data.category)}</span>`
             : '';
@@ -1597,6 +1598,12 @@
         try {
             let location = AppState.currentLocation;
 
+            // PLAN C — Ubicación no bloqueante.
+            // Si no hay coords válidas, hacemos UN intento automático.
+            // Si el permiso fue denegado, el GPS falla o el navegador
+            // no lo soporta, seguimos sin coordenadas: la referencia
+            // de texto (product-ref) ya es obligatoria y basta para
+            // publicar. Nunca se bloquea la publicación por GPS.
             if (!hasValidLocation()) {
                 setSubmitButton('Obteniendo ubicación…', 'fa-location-crosshairs');
                 try {
@@ -1604,11 +1611,18 @@
                     AppState.currentLocation = location;
                     applyLocationToInput(location);
                 } catch (locErr) {
-                    showFormError(
-                        locErr.message ||
-                        'No pudimos obtener tu ubicación. Activa el GPS e inténtalo de nuevo.'
-                    );
-                    return;
+                    Logger.warn('Publicando sin ubicación GPS', locErr);
+                    // Stub con claves nulas: el payload sigue siendo
+                    // homogéneo (siempre tiene lat/lng/address/etc.).
+                    location = {
+                        latitude: null,
+                        longitude: null,
+                        accuracy: null,
+                        address: '',
+                        city: '',
+                        state: '',
+                        country: ''
+                    };
                 }
             } else {
                 location = AppState.currentLocation;

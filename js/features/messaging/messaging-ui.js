@@ -541,6 +541,13 @@
             return;
         }
 
+        // NUEVO: impedir abrir una conversación consigo mismo
+        if (otherUid === AppState.currentUser.uid) {
+            Toast.info('No puedes abrir una conversación contigo mismo.');
+            if (myToken === openChatToken) closeOverlay();
+            return;
+        }
+
         // Cargar perfil del vendedor (background)
         if (window.SellerProfileService && otherUid) {
             try {
@@ -606,6 +613,13 @@
      */
     async function openChatWith(sellerUid, { fromPublication = false, publicationContext = null } = {}) {
         if (!sellerUid) { Toast.warning('Vendedor no disponible.'); return; }
+
+        // NUEVO: impedir auto-mensaje
+        if (AppState.currentUser && sellerUid === AppState.currentUser.uid) {
+            Toast.info('No puedes enviarte mensajes a ti mismo.');
+            return;
+        }
+
         if (!AppState.currentUser) {
             AppState.pendingAction = {
                 type: 'openChatWith',
@@ -1169,6 +1183,16 @@
             currentChat.unsubscribe = null;
         }
 
+        // NUEVO: resetear contexto de chat
+        currentChat.conversationId = null;
+        currentChat.otherUid = null;
+        currentChat.otherProfile = null;
+        currentChat.publicationContext = null;
+        currentChat.messages = [];
+        currentChat.oldestCreatedAt = null;
+        currentChat.hasMore = true;
+        currentChat.loadedOnce = false;
+
         if (chatHistoryPushed) {
             chatHistoryPushed = false;
             if (syncHistory) {
@@ -1273,6 +1297,7 @@
                 }
             });
         }
+
         if (sendBtn) sendBtn.addEventListener('click', sendCurrent);
 
         document.addEventListener('click', (e) => {
@@ -1280,20 +1305,24 @@
             if (messageMenuEl.contains(e.target)) return;
             closeMessageMenu();
         });
+
         document.addEventListener('scroll', () => closeMessageMenu(), true);
 
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
+
             if (emojiPicker && !emojiPicker.classList.contains('hidden')) {
                 e.preventDefault();
                 closeEmojiPicker();
                 return;
             }
+
             if (messageMenuEl && !messageMenuEl.classList.contains('hidden')) {
                 e.preventDefault();
                 closeMessageMenu();
                 return;
             }
+
             if (overlay && !overlay.classList.contains('hidden')) {
                 e.preventDefault();
                 closeOverlay();
@@ -1309,7 +1338,10 @@
         isChatOpen: () => overlay && !overlay.classList.contains('hidden'),
         closeChat: closeOverlay,
         consumeSuppressPopstate: () => {
-            if (suppressPopstate) { suppressPopstate = false; return true; }
+            if (suppressPopstate) {
+                suppressPopstate = false;
+                return true;
+            }
             return false;
         }
     };

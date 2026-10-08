@@ -1,5 +1,12 @@
 /* =====================================================
    PIPGO · ADMIN SERVICE
+   -----------------------------------------------------
+   PLAN B:
+   - getDashboardStats: usa count() si está disponible;
+     si la build de compat no lo expone, cae a get().size
+     automáticamente. Cero errores en consola.
+   - listApplications: CHUNK = 30 (máximo del operador
+     'in' de Firestore con documentId()).
    ===================================================== */
 
 window.AdminService = {
@@ -17,34 +24,68 @@ window.AdminService = {
         return AppState.currentUser ? AppState.currentUser.uid : null;
     },
 
+    /**
+     * Cuenta documentos de una query de forma segura.
+     *
+     * - Si el SDK expone aggregation queries (.count()), las usa:
+     *     1 lectura por cada 1000 docs.
+     * - Si no (build de compat sin aggregation), hace get() y usa .size:
+     *     1 lectura por doc (peor, pero funciona).
+     *
+     * Nunca lanza por API faltante.
+     */
+    async _safeCount(query) {
+        if (query && typeof query.count === 'function') {
+            try {
+                const snap = await query.count().get();
+                const n = snap && snap.data && typeof snap.data().count === 'number'
+                    ? snap.data().count
+                    : null;
+                if (n !== null) return n;
+            } catch (e) {
+                // Si por alguna razón count() está expuesto pero
+                // falla (backend antiguo, permisos), caemos al fallback.
+                Logger.warn('count() falló, usando get().size', e);
+            }
+        }
+        const snap = await query.get();
+        return snap.size;
+    },
+
     async getDashboardStats() {
-        const [usersSnap, appsSnap, recoveriesSnap] = await Promise.all([
-            db.collection(CONFIG.COLLECTIONS.USERS).get(),
-            db.collection(CONFIG.COLLECTIONS.SELLER_APPLICATIONS).get(),
-            db.collection('solicitudesRecuperacion').where('status', '==', 'pending').get()
+        const usersCol = db.collection(CONFIG.COLLECTIONS.USERS);
+        const appsCol  = db.collection(CONFIG.COLLECTIONS.SELLER_APPLICATIONS);
+        const recCol   = db.collection('solicitudesRecuperacion');
+
+        const [
+            totalUsers,
+            pending,
+            approved,
+            rejected,
+            needsInfo,
+            pendingRecoveries
+        ] = await Promise.all([
+            this._safeCount(usersCol),
+            this._safeCount(appsCol.where('status', '==', 'pending')),
+            this._safeCount(appsCol.where('status', '==', 'approved')),
+            this._safeCount(appsCol.where('status', '==', 'rejected')),
+            this._safeCount(appsCol.where('status', '==', 'needs_info')),
+            this._safeCount(recCol.where('status', '==', 'pending'))
         ]);
 
-        let pending = 0, approved = 0, rejected = 0, needsInfo = 0;
-        appsSnap.forEach(doc => {
-            const s = doc.data().status;
-            if (s === 'pending')         pending++;
-            else if (s === 'approved')   approved++;
-            else if (s === 'rejected')   rejected++;
-            else if (s === 'needs_info') needsInfo++;
-        });
-
         return {
-            totalUsers: usersSnap.size,
-            pending, approved, rejected, needsInfo,
-            pendingRecoveries: recoveriesSnap.size
+            totalUsers,
+            pending,
+            approved,
+            rejected,
+            needsInfo,
+            pendingRecoveries
         };
     },
 
     /**
-     * MEJORA: en lugar de leer TODA la colección usuarios para
-     * enriquecer cada solicitud, leemos solo los uids relevantes
-     * con un where(documentId() 'in' [...]) en chunks de 10.
-     * Con 10k usuarios esto baja de 10k lecturas a N (tamaño de apps).
+     * Enriquece cada solicitud con datos del usuario emisor.
+     * Firestore permite hasta 30 valores en 'in' → usamos 30.
      */
     async listApplications(filter = 'all') {
         let query = db.collection(CONFIG.COLLECTIONS.SELLER_APPLICATIONS);
@@ -54,12 +95,10 @@ window.AdminService = {
         const apps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (!apps.length) return [];
 
-        // UIDs únicos (el documento está keyed por uid en este proyecto)
         const uids = [...new Set(apps.map(a => a.uid || a.id))].filter(Boolean);
         const usersById = {};
 
-        // Firestore 'in' permite hasta 30 valores; usamos chunks de 10 por seguridad.
-        const CHUNK = 10;
+        const CHUNK = 30;
         for (let i = 0; i < uids.length; i += CHUNK) {
             const chunk = uids.slice(i, i + CHUNK);
             try {
@@ -133,9 +172,9 @@ window.AdminService = {
                 uid,
                 username: user.username || '',
                 usernameNormalized: user.usernameNormalized || '',
-                usernamePrefixes: Validators.generateUsernamePrefixes(user.usernameNormalized || ''),  // ← NUEVO
+                usernamePrefixes: Validators.generateUsernamePrefixes(user.usernameNormalized || ''),
                 avatarUrl: user.avatarUrl || '',
-                sellerApproved: true,                                                                  // ← NUEVO
+                sellerApproved: true,
                 displayName: app.displayName || '',
                 businessName: app.businessName || '',
                 sellerType: app.sellerType || 'person',

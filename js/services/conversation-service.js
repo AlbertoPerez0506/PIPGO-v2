@@ -156,10 +156,16 @@
 
     function hasUnread(conversation, uid) {
         if (!conversation || !uid) return false;
+
+        // Si el último mensaje ya expiró, no cuenta como no leído.
+        if (isLastMessageExpired(conversation)) return false;
+
         const sender = conversation.lastMessageSenderId;
         if (!sender || sender === uid) return false;
+
         const lastMs = _toMs(conversation.lastMessageAt);
         if (!lastMs) return false;
+
         const readMs = _toMs(conversation.readAtBy && conversation.readAtBy[uid]);
         return lastMs > readMs;
     }

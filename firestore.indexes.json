@@ -1,0 +1,38 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "publicaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING"  },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "publicaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",    "order": "ASCENDING"  },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status",         "order": "ASCENDING"      },
+        { "fieldPath": "updatedAt",      "order": "DESCENDING"     }
+      ]
+    },
+    {
+      "collectionGroup": "perfilesPublicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerApproved",   "order": "ASCENDING"    },
+        { "fieldPath": "usernamePrefixes", "arrayConfig": "CONTAINS" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
