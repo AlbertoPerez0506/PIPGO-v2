@@ -1,7 +1,12 @@
 /* =====================================================
    PIPGO · ADMIN UI
-   Panel de administración: dashboard, solicitudes,
-   recuperaciones de contraseña y usuarios.
+   -----------------------------------------------------
+   v2.3 (Ronda 5 fixes):
+   - openConfirm / closeConfirm migrados a BodyLock.
+     Se elimina confirmBodyLockPrev local.
+   - Heredado v2.2 (Ronda 2): FocusTrap.activate en
+     openConfirm con foco contextual.
+   - Heredado v2.1: switchTab sincroniza aria-selected.
    ===================================================== */
 
 (function () {
@@ -19,6 +24,16 @@
         confirmInputWrap, confirmInputLabel, confirmInput,
         confirmError, confirmOkBtn, confirmCancelBtn, confirmCloseBtn;
     let pendingConfirmAction = null;
+
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
 
     /* ---------------- HELPERS ---------------- */
     function el(html) {
@@ -140,11 +155,11 @@
 
         panel.innerHTML = `
             <div class="admin-filter-row">
-                <button class="admin-filter-chip${currentFilter === 'pending'    ? ' active' : ''}" data-filter="pending">Pendientes</button>
-                <button class="admin-filter-chip${currentFilter === 'needs_info' ? ' active' : ''}" data-filter="needs_info">Info requerida</button>
-                <button class="admin-filter-chip${currentFilter === 'approved'   ? ' active' : ''}" data-filter="approved">Aprobadas</button>
-                <button class="admin-filter-chip${currentFilter === 'rejected'   ? ' active' : ''}" data-filter="rejected">Rechazadas</button>
-                <button class="admin-filter-chip${currentFilter === 'all'        ? ' active' : ''}" data-filter="all">Todas</button>
+                <button class="admin-filter-chip${currentFilter === 'pending'    ? ' active' : ''}" data-filter="pending" type="button">Pendientes</button>
+                <button class="admin-filter-chip${currentFilter === 'needs_info' ? ' active' : ''}" data-filter="needs_info" type="button">Info requerida</button>
+                <button class="admin-filter-chip${currentFilter === 'approved'   ? ' active' : ''}" data-filter="approved" type="button">Aprobadas</button>
+                <button class="admin-filter-chip${currentFilter === 'rejected'   ? ' active' : ''}" data-filter="rejected" type="button">Rechazadas</button>
+                <button class="admin-filter-chip${currentFilter === 'all'        ? ' active' : ''}" data-filter="all" type="button">Todas</button>
             </div>
             <div id="admin-applications-list" class="admin-applications-list">
                 <p class="admin-loading">Cargando solicitudes…</p>
@@ -198,7 +213,7 @@
                             <i class="fa-solid ${statusIcon(app.status)}" aria-hidden="true"></i>
                             ${Formatters.escapeHtml(statusLabel(app.status))}
                         </span>
-                        <i class="fa-solid fa-chevron-down admin-chevron"></i>
+                        <i class="fa-solid fa-chevron-down admin-chevron" aria-hidden="true"></i>
                     </div>
                 </div>
                 <div class="admin-app-body hidden">
@@ -212,7 +227,9 @@
             const isOpen = !body.classList.contains('hidden');
             body.classList.toggle('hidden', isOpen);
             card.classList.toggle('open', !isOpen);
+            head.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
         });
+        head.setAttribute('aria-expanded', 'false');
 
         card.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -270,13 +287,13 @@
 
         const actions = [];
         if (app.status === 'pending' || app.status === 'needs_info' || app.status === 'rejected') {
-            actions.push(`<button class="admin-action-btn approve" data-action="approve"><i class="fa-solid fa-check"></i> Aprobar</button>`);
+            actions.push(`<button class="admin-action-btn approve" data-action="approve" type="button"><i class="fa-solid fa-check" aria-hidden="true"></i> Aprobar</button>`);
         }
         if (app.status === 'pending' || app.status === 'approved') {
-            actions.push(`<button class="admin-action-btn info" data-action="needs_info"><i class="fa-solid fa-circle-info"></i> Solicitar información</button>`);
+            actions.push(`<button class="admin-action-btn info" data-action="needs_info" type="button"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Solicitar información</button>`);
         }
         if (app.status === 'pending' || app.status === 'approved' || app.status === 'needs_info') {
-            actions.push(`<button class="admin-action-btn reject" data-action="reject"><i class="fa-solid fa-xmark"></i> Rechazar</button>`);
+            actions.push(`<button class="admin-action-btn reject" data-action="reject" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Rechazar</button>`);
         }
 
         if (actions.length) {
@@ -295,10 +312,10 @@
 
         panel.innerHTML = `
             <div class="admin-filter-row">
-                <button class="admin-filter-chip${currentRecoverFilter === 'pending'  ? ' active' : ''}" data-filter="pending">Pendientes</button>
-                <button class="admin-filter-chip${currentRecoverFilter === 'approved' ? ' active' : ''}" data-filter="approved">Aprobadas</button>
-                <button class="admin-filter-chip${currentRecoverFilter === 'rejected' ? ' active' : ''}" data-filter="rejected">Rechazadas</button>
-                <button class="admin-filter-chip${currentRecoverFilter === 'all'      ? ' active' : ''}" data-filter="all">Todas</button>
+                <button class="admin-filter-chip${currentRecoverFilter === 'pending'  ? ' active' : ''}" data-filter="pending" type="button">Pendientes</button>
+                <button class="admin-filter-chip${currentRecoverFilter === 'approved' ? ' active' : ''}" data-filter="approved" type="button">Aprobadas</button>
+                <button class="admin-filter-chip${currentRecoverFilter === 'rejected' ? ' active' : ''}" data-filter="rejected" type="button">Rechazadas</button>
+                <button class="admin-filter-chip${currentRecoverFilter === 'all'      ? ' active' : ''}" data-filter="all" type="button">Todas</button>
             </div>
             <div id="admin-recoveries-list" class="admin-applications-list">
                 <p class="admin-loading">Cargando solicitudes…</p>
@@ -348,7 +365,7 @@
                             <i class="fa-solid ${statusIcon(req.status)}" aria-hidden="true"></i>
                             ${Formatters.escapeHtml(statusLabel(req.status))}
                         </span>
-                        <i class="fa-solid fa-chevron-down admin-chevron"></i>
+                        <i class="fa-solid fa-chevron-down admin-chevron" aria-hidden="true"></i>
                     </div>
                 </div>
                 <div class="admin-app-body hidden">
@@ -362,7 +379,9 @@
             const isOpen = !body.classList.contains('hidden');
             body.classList.toggle('hidden', isOpen);
             card.classList.toggle('open', !isOpen);
+            head.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
         });
+        head.setAttribute('aria-expanded', 'false');
 
         card.querySelectorAll('[data-recover-action]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -411,15 +430,15 @@
 
         const actions = [];
         if (req.status === 'pending') {
-            actions.push(`<button class="admin-action-btn approve" data-recover-action="approve">
-                <i class="fa-solid fa-paper-plane"></i> Enviar enlace
+            actions.push(`<button class="admin-action-btn approve" data-recover-action="approve" type="button">
+                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar enlace
             </button>`);
-            actions.push(`<button class="admin-action-btn reject" data-recover-action="reject">
-                <i class="fa-solid fa-xmark"></i> Rechazar
+            actions.push(`<button class="admin-action-btn reject" data-recover-action="reject" type="button">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> Rechazar
             </button>`);
         } else if (req.status === 'rejected') {
-            actions.push(`<button class="admin-action-btn approve" data-recover-action="approve">
-                <i class="fa-solid fa-paper-plane"></i> Enviar enlace
+            actions.push(`<button class="admin-action-btn approve" data-recover-action="approve" type="button">
+                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar enlace
             </button>`);
         }
 
@@ -460,8 +479,8 @@
 
         panel.innerHTML = `
             <div class="admin-search-wrap">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="admin-user-search" placeholder="Buscar por @usuario o correo…">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="text" id="admin-user-search" placeholder="Buscar por @usuario o correo…" aria-label="Buscar usuario">
             </div>
             <p class="admin-users-count" id="admin-users-count"></p>
             <div class="admin-users-list" id="admin-users-list">
@@ -564,11 +583,14 @@
         confirmTitle.textContent = title;
         confirmText.textContent = text;
 
+        let initialFocus = confirmOkBtn;
+
         if (inputLabel) {
             confirmInputWrap.classList.remove('hidden');
             confirmInputLabel.textContent = inputLabel;
             confirmInput.placeholder = inputPlaceholder || '';
             confirmInput.value = '';
+            initialFocus = confirmInput;
         } else {
             confirmInputWrap.classList.add('hidden');
         }
@@ -579,10 +601,25 @@
         pendingConfirmAction = onConfirm;
 
         confirmModal.classList.remove('hidden');
+
+        /* Ronda 5: BodyLock.acquire() */
+        _lockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.activate(confirmModal, initialFocus);
+        }
     }
 
     function closeConfirm() {
         confirmModal.classList.add('hidden');
+
+        /* Ronda 5: BodyLock.release() */
+        _unlockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(confirmModal);
+        }
+
         pendingConfirmAction = null;
     }
 
@@ -592,8 +629,6 @@
         const needsInput = !confirmInputWrap.classList.contains('hidden');
         const value = needsInput ? confirmInput.value.trim() : '';
 
-        // Para rechazos con motivo, permitir vacío (opcional). El mínimo
-        // solo aplica si el label dice "Motivo del rechazo" en vendedores.
         if (needsInput &&
             confirmInputLabel.textContent === 'Motivo del rechazo' &&
             value.length < 3) {
@@ -604,7 +639,7 @@
 
         confirmOkBtn.disabled = true;
         const originalText = confirmOkBtn.textContent;
-        confirmOkBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando…';
+        confirmOkBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Procesando…';
 
         try {
             await pendingConfirmAction(value);
@@ -630,8 +665,11 @@
        ===================================================== */
     function switchTab(tab) {
         currentTab = tab;
+
         document.querySelectorAll('.admin-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.adminTab === tab);
+            const isActive = t.dataset.adminTab === tab;
+            t.classList.toggle('active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         document.querySelectorAll('.admin-panel').forEach(p => {
             p.classList.toggle('active', p.id === `admin-panel-${tab}`);
@@ -647,37 +685,45 @@
        ENTRAR AL PANEL
        ===================================================== */
     function onEnterAdmin() {
-        waitForAuthThenEnter(0);
-    }
-
-    function waitForAuthThenEnter(attempt) {
-        const MAX_ATTEMPTS = 12;
-        const INTERVAL_MS = 100;
-
         if (AppState.currentUser) {
-            if (!AdminService.isAdmin()) {
-                Toast.error('No tienes permisos para acceder.');
-                NavigationUI.switchView('home');
-                return;
-            }
-            renderAdminPanel();
+            enterIfAuthorized();
             return;
         }
 
-        if (attempt >= MAX_ATTEMPTS) {
+        let resolved = false;
+        const unsubscribe = AuthService.onAuthStateChanged(() => {
+            if (resolved) return;
+            resolved = true;
+            try { unsubscribe(); } catch (e) {}
+            enterIfAuthorized();
+        });
+
+        setTimeout(() => {
+            if (resolved) return;
+            resolved = true;
+            try { unsubscribe(); } catch (e) {}
+            enterIfAuthorized();
+        }, 4000);
+    }
+
+    function enterIfAuthorized() {
+        if (!AppState.currentUser) {
             Toast.error('No tienes permisos para acceder.');
             NavigationUI.switchView('home');
             return;
         }
-
-        setTimeout(() => waitForAuthThenEnter(attempt + 1), INTERVAL_MS);
+        if (!AdminService.isAdmin()) {
+            Toast.error('No tienes permisos para acceder.');
+            NavigationUI.switchView('home');
+            return;
+        }
+        renderAdminPanel();
     }
 
     function renderAdminPanel() {
         const hello = document.getElementById('admin-hello');
         const profile = AppState.currentProfile || {};
         if (hello) hello.textContent = `Hola, ${profile.username || 'admin'}`;
-
         switchTab('dashboard');
     }
 
@@ -704,9 +750,7 @@
         });
 
         const backBtn = document.getElementById('admin-back');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => history.back());
-        }
+        if (backBtn) backBtn.addEventListener('click', () => history.back());
 
         confirmOkBtn.addEventListener('click', onConfirmClick);
         confirmCancelBtn.addEventListener('click', closeConfirm);

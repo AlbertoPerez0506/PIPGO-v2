@@ -2,10 +2,14 @@
    PIPGO · SELLER PROFILE UI
    Bottom sheet con el perfil público del vendedor.
    -----------------------------------------------------
-   FIX 2026:
-   - Nunca muestra "Enviar mensaje" en el propio perfil.
-   - Sólo renderiza perfil completo si sellerApproved === true.
-   - Dos estados vacíos: unavailable / not-seller.
+   v3.1 (Ronda 5 fixes):
+   - Body lock migrado a BodyLock.acquire/release. Resuelve
+     el bug: "abrir SellerProfile sobre Chat y cerrarlo
+     dejaba el chat con body scrolleable".
+   - close() también se llama desde app.js (ESC) y NavigationUI
+     (back button): BodyLock.release se ejecuta siempre.
+   - Heredado: nunca muestra "Enviar mensaje" en el propio
+     perfil. Solo renderiza perfil si sellerApproved === true.
    ===================================================== */
 
 (function () {
@@ -19,6 +23,16 @@
     let suppressPopstate = false;
     let currentProfileCache = null;
 
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
+
     function open(uid, { preload = null } = {}) {
         if (!uid) { Toast.warning('Vendedor no disponible.'); return; }
         if (openingLock) return;
@@ -29,7 +43,7 @@
         currentUid = uid;
         currentProfileCache = preload || null;
         backdrop.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        _lockBody();  /* Ronda 5: BodyLock.acquire() */
         render(uid, preload);
         if (!historyPushed) {
             history.pushState({ view: AppState.currentView, overlay: 'sellerProfile' }, '', '');
@@ -39,7 +53,7 @@
 
     function close(syncHistory = true) {
         backdrop.classList.remove('open');
-        document.body.style.overflow = '';
+        _unlockBody();  /* Ronda 5: BodyLock.release() */
         currentUid = null;
         currentProfileCache = null;
         if (historyPushed) {
@@ -157,7 +171,6 @@
     async function render(uid, preload) {
         renderSkeleton();
 
-        // Si es mi propio perfil, lo mostramos simplificado.
         const isSelf = AppState.currentUser && AppState.currentUser.uid === uid;
 
         let profile = preload;

@@ -1,7 +1,37 @@
 /* =====================================================
-   PIPGO · MAIN CSS
+   PIPGO · MAIN CSS v3.0
    Punto de entrada único. Importa toda la arquitectura CSS.
-   Orden: core → layout → components → pages
+
+   Orden de carga (importante — no reordenar sin auditar):
+     1. core/variables.css     → tokens
+     2. core/base.css          → reset + tipografía + utilidades
+     3. layout/layout.css      → shell, header, navbar
+     4. components/components.css → botones, cards, formularios,
+                                   modales, sheets, galería, auth,
+                                   ajustes, empty states, lightbox
+     5. components/settings-extras.css → overrides de checkbox,
+                                   WhatsApp, chips, presentación,
+                                   vista previa, banner de nuevas
+     6. components/connectivity.css    → banner offline
+     7. components/skeletons.css       → placeholders + ptr
+     8. pages/pages.css        → Home, Search, Publicar, Perfil,
+                                 siguientes, seller-search
+     9. pages/seller.css       → modal de vendedor
+    10. pages/admin.css        → panel admin
+    11. pages/messaging.css    → inbox + chat + emoji picker
+    12. pages/seller-profile.css → sheet público del vendedor
+
+   NOTA: legal.css se carga aparte desde index.html (después de
+   este archivo) porque solo se usa en contextos específicos
+   (registro + ajustes) y así se evita que su scrollbar visible
+   afecte al resto de scrolls de la app.
+
+   El paso 5 (settings-extras) reescribe intencionalmente
+   algunas reglas del paso 4 para los mismos selectores
+   (.form-checkbox, .btn-whatsapp, .condition-chip,
+   .presentation-row, .char-counter, .form-hint,
+   .preview-body-inner .sheet-*). Por eso debe cargarse
+   después. No es duplicación accidental.
    ===================================================== */
 
 /* main.css */
@@ -12,6 +42,7 @@
 @import url('./components/settings-extras.css');
 @import url('./components/connectivity.css');
 @import url('./components/skeletons.css');
+@import url('./components/inline-fixes.css');
 @import url('./pages/pages.css');
 @import url('./pages/seller.css');
 @import url('./pages/admin.css');

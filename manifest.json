@@ -1,0 +1,62 @@
+{
+  "name": "PipGo · Compra y vende cerca de ti",
+  "short_name": "PipGo",
+  "description": "Marketplace local para comprar y vender productos cerca de ti: frutas, verduras, comida, artesanías y más.",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#F2911B",
+  "theme_color": "#F2911B",
+  "categories": ["shopping", "food", "lifestyle"],
+  "icons": [
+    {
+      "src": "/assets/android/icon_x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/android/icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/android/icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/android/icon-maskable_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/android/icon-maskable_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Buscar productos",
+      "short_name": "Buscar",
+      "url": "/?view=search",
+      "icons": [{ "src": "/assets/android/icon_x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mensajes",
+      "short_name": "Mensajes",
+      "url": "/?view=messaging",
+      "icons": [{ "src": "/assets/android/icon_x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,3 +1,10 @@
+/* =====================================================
+   PIPGO · NAVIGATION
+   v2.0: guardas `window.X` en switchView (F-13).
+   Si un feature no cargó (por red, error de sintaxis, etc.),
+   la navegación sigue funcionando sin reventar.
+   ===================================================== */
+
 (function () {
     let views, navItems, mainContent, homeSearchBtn, homeSearchTrigger, btnVerTodos;
     let navigationStack = ['home'];
@@ -7,7 +14,7 @@
         const isSameView = viewName === AppState.currentView;
 
         if (isSameView && push && !force) {
-            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+            if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
         if (isSameView && !push && !force) return;
@@ -37,7 +44,7 @@
 
         navItems.forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
 
-        mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
 
         if (leavingHome && window.PublicationUI && PublicationUI.onLeaveHome) {
             PublicationUI.onLeaveHome();
@@ -47,18 +54,24 @@
             if (window.PublicationUI && PublicationUI.onEnterHome) PublicationUI.onEnterHome();
         }
 
-        if (viewName === 'anunciarme') PublicationUI.updateAuthUI();
-
-        if (viewName === 'perfil') {
-            if (previousView !== 'perfil' && window.ProfileUI && ProfileUI.resetActiveTab) {
-                ProfileUI.resetActiveTab();
-            }
-            ProfileUI.renderProfile();
+        if (viewName === 'anunciarme' && window.PublicationUI && PublicationUI.updateAuthUI) {
+            PublicationUI.updateAuthUI();
         }
 
-        if (viewName === 'search') PublicationUI.onEnterSearch();
-        if (viewName === 'admin' && window.AdminUI) AdminUI.onEnterAdmin();
-        if (viewName === 'messaging' && window.MessagingUI) MessagingUI.onEnterMessaging();
+        if (viewName === 'perfil' && window.ProfileUI) {
+            if (previousView !== 'perfil' && ProfileUI.resetActiveTab) ProfileUI.resetActiveTab();
+            if (ProfileUI.renderProfile) ProfileUI.renderProfile();
+        }
+
+        if (viewName === 'search' && window.PublicationUI && PublicationUI.onEnterSearch) {
+            PublicationUI.onEnterSearch();
+        }
+        if (viewName === 'admin' && window.AdminUI && AdminUI.onEnterAdmin) {
+            AdminUI.onEnterAdmin();
+        }
+        if (viewName === 'messaging' && window.MessagingUI && MessagingUI.onEnterMessaging) {
+            MessagingUI.onEnterMessaging();
+        }
 
         if (push) {
             const last = navigationStack[navigationStack.length - 1];
@@ -77,65 +90,33 @@
     }
 
     function closeAllOverlays() {
-        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) {
-            LegalUI.close(true); return true;
+        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { LegalUI.close(true); return true; }
+        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { MessagingUI.closeChat(); return true; }
+        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { SellerProfileUI.close(); return true; }
+        if (window.PublicationUI) {
+            if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) { PublicationUI.closeProductSheet(true); return true; }
+            if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) { PublicationUI.closeLightbox(true); return true; }
+            if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) { PublicationUI.closePreview(true); return true; }
+            if (PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) { PublicationUI.closeFilterModal(); return true; }
         }
-        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) {
-            MessagingUI.closeChat(); return true;
-        }
-        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) {
-            SellerProfileUI.close(); return true;
-        }
-
-        if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) {
-            PublicationUI.closeProductSheet(true); return true;
-        }
-        if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) {
-            PublicationUI.closeLightbox(true); return true;
-        }
-        if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) {
-            PublicationUI.closePreview(true); return true;
-        }
-        if (AuthUI.isAuthModalOpen && AuthUI.isAuthModalOpen()) {
-            AuthUI.closeAuthModal(); return true;
-        }
-        if (PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) {
-            PublicationUI.closeFilterModal(); return true;
-        }
-        if (ProfileUI.isSettingsModalOpen && ProfileUI.isSettingsModalOpen()) {
-            ProfileUI.closeSettings(); return true;
-        }
-        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) {
-            AdminUI.closeConfirm(); return true;
-        }
+        if (window.AuthUI && AuthUI.isAuthModalOpen && AuthUI.isAuthModalOpen()) { AuthUI.closeAuthModal(); return true; }
+        if (window.ProfileUI && ProfileUI.isSettingsModalOpen && ProfileUI.isSettingsModalOpen()) { ProfileUI.closeSettings(); return true; }
+        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) { AdminUI.closeConfirm(); return true; }
         if (window.SellerUI) {
             const sellerModal = document.getElementById('seller-modal');
-            if (sellerModal && !sellerModal.classList.contains('hidden')) {
-                SellerUI.close(); return true;
-            }
+            if (sellerModal && !sellerModal.classList.contains('hidden')) { SellerUI.close(); return true; }
         }
         return false;
     }
 
     function onBackButton(e) {
-        // Overlay más alto primero (por z-index).
-        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) {
-            e.preventDefault(); LegalUI.close(); return;
-        }
-        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) {
-            e.preventDefault(); SellerProfileUI.close(); return;
-        }
-        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) {
-            e.preventDefault(); MessagingUI.closeChat(); return;
-        }
-        if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) {
-            e.preventDefault(); PublicationUI.closeLightbox(); return;
-        }
-        if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) {
-            e.preventDefault(); PublicationUI.closeProductSheet(); return;
-        }
-        if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) {
-            e.preventDefault(); PublicationUI.closePreview(); return;
+        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { e.preventDefault(); LegalUI.close(); return; }
+        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { e.preventDefault(); SellerProfileUI.close(); return; }
+        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { e.preventDefault(); MessagingUI.closeChat(); return; }
+        if (window.PublicationUI) {
+            if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) { e.preventDefault(); PublicationUI.closeLightbox(); return; }
+            if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) { e.preventDefault(); PublicationUI.closeProductSheet(); return; }
+            if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) { e.preventDefault(); PublicationUI.closePreview(); return; }
         }
         if (closeAllOverlays()) { e.preventDefault(); return; }
         if (navigationStack.length > 1) { e.preventDefault(); history.back(); return; }
@@ -157,35 +138,20 @@
     }
 
     function handlePopState(event) {
-        // Suppression: un overlay cerró con history.back() y no
-        // quiere que el popstate cierre el overlay que está debajo.
-        if (PublicationUI.consumeSuppressPopstate && PublicationUI.consumeSuppressPopstate()) return;
+        if (window.PublicationUI && PublicationUI.consumeSuppressPopstate && PublicationUI.consumeSuppressPopstate()) return;
         if (window.MessagingUI && MessagingUI.consumeSuppressPopstate && MessagingUI.consumeSuppressPopstate()) return;
         if (window.SellerProfileUI && SellerProfileUI.consumeSuppressPopstate && SellerProfileUI.consumeSuppressPopstate()) return;
         if (window.LegalUI && LegalUI.consumeSuppressPopstate && LegalUI.consumeSuppressPopstate()) return;
 
-        // Overlay más alto primero (por z-index).
-        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) {
-            LegalUI.close(false); return;
+        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { LegalUI.close(false); return; }
+        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { SellerProfileUI.close(false); return; }
+        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { MessagingUI.closeChat(false); return; }
+        if (window.PublicationUI) {
+            if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) { PublicationUI.closeLightbox(false); return; }
+            if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) { PublicationUI.closeProductSheet(false); return; }
+            if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) { PublicationUI.closePreview(false); return; }
         }
-        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) {
-            SellerProfileUI.close(false); return;
-        }
-        if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) {
-            MessagingUI.closeChat(false); return;
-        }
-        if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) {
-            PublicationUI.closeLightbox(false); return;
-        }
-        if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) {
-            PublicationUI.closeProductSheet(false); return;
-        }
-        if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) {
-            PublicationUI.closePreview(false); return;
-        }
-        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) {
-            AdminUI.closeConfirm(); return;
-        }
+        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) { AdminUI.closeConfirm(); return; }
 
         const targetView = (event.state && event.state.view) || 'home';
 
@@ -239,7 +205,9 @@
         if (btnVerTodos) {
             btnVerTodos.addEventListener('click', () => {
                 switchView('search', { push: true });
-                PublicationUI.showAllPublications();
+                if (window.PublicationUI && PublicationUI.showAllPublications) {
+                    PublicationUI.showAllPublications();
+                }
             });
         }
 

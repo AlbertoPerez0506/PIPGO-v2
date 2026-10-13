@@ -2,6 +2,11 @@
    PIPGO · SELLER PROFILE SERVICE
    Lectura + cache de perfilesPublicos/{uid}.
    Búsqueda por prefijo de username (solo vendedores aprobados).
+   -----------------------------------------------------
+   v2.1:
+   - getPublicProfile trata permission-denied como "no existe"
+     (defensa futura si se endurecen las rules).
+   - Cache negativa (null) también cacheada con TTL.
    ===================================================== */
 
 (function () {
@@ -28,6 +33,12 @@
             cache.set(uid, { data, at: Date.now() });
             return data;
         } catch (e) {
+            // Si las rules niegan la lectura (perfil no aprobado o
+            // inexistente según reglas endurecidas), no rompemos.
+            if (e && e.code === 'permission-denied') {
+                cache.set(uid, { data: null, at: Date.now() });
+                return null;
+            }
             Logger.error('SellerProfileService.getPublicProfile', e);
             return hit ? hit.data : null;
         }

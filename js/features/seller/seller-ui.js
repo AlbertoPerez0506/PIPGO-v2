@@ -1,17 +1,45 @@
 /* =====================================================
    PIPGO · SELLER UI
    Modal de "Quiero vender" + formulario de solicitud.
+   -----------------------------------------------------
+   v3.3 (Ronda 5 fixes):
+   - BodyLock.acquire() en open() y release() en close().
+     Consistencia con el resto de modales.
+   - Heredado v3.2: FocusTrap.activate con foco inicial
+     dinámico según estado renderizado.
    ===================================================== */
 
 (function () {
     let modal, closeBtn, titleEl, bodyEl;
     let initialized = false;
 
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
+
     /* ---------------- helpers ---------------- */
     function el(html) {
         const t = document.createElement('template');
         t.innerHTML = html.trim();
         return t.content.firstElementChild;
+    }
+
+    function _getInitialFocus() {
+        if (!bodyEl) return null;
+        const candidates = bodyEl.querySelectorAll(
+            'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), ' +
+            'select:not([disabled]), button:not([disabled])'
+        );
+        for (const node of candidates) {
+            if (node.offsetParent !== null) return node;
+        }
+        return closeBtn;
     }
 
     async function open() {
@@ -22,9 +50,23 @@
         }
         await renderByState();
         modal.classList.remove('hidden');
+
+        /* Ronda 5: BodyLock.acquire() */
+        _lockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.activate(modal, _getInitialFocus());
+        }
     }
 
-    function close() { modal.classList.add('hidden'); }
+    function close() {
+        modal.classList.add('hidden');
+
+        /* Ronda 5: BodyLock.release() */
+        _unlockBody();
+
+        if (window.FocusTrap) FocusTrap.deactivate(modal);
+    }
 
     /* ---------------- estados ---------------- */
     async function renderByState() {
@@ -41,18 +83,18 @@
         titleEl.textContent = 'Vende en PipGo';
         bodyEl.innerHTML = `
             <div class="seller-intro">
-                <div class="seller-intro-icon"><i class="fa-solid fa-store"></i></div>
+                <div class="seller-intro-icon"><i class="fa-solid fa-store" aria-hidden="true"></i></div>
                 <p class="seller-intro-text">
                     Publica productos o promociona tu negocio dentro de PipGo.
                     Solo te pediremos datos básicos para verificar tu solicitud.
                 </p>
                 <ul class="seller-intro-list">
-                    <li><i class="fa-solid fa-check"></i> Sin documentos oficiales</li>
-                    <li><i class="fa-solid fa-check"></i> Sin datos bancarios</li>
-                    <li><i class="fa-solid fa-check"></i> Revisión en 24-48h</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Sin documentos oficiales</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Sin datos bancarios</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Revisión en 24-48h</li>
                 </ul>
                 <button class="btn-primary btn-large" id="seller-continue">
-                    <i class="fa-solid fa-arrow-right"></i> Continuar
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Continuar
                 </button>
             </div>`;
         bodyEl.querySelector('#seller-continue')
@@ -64,7 +106,6 @@
                             : needsInfo ? 'Completar información'
                             : 'Solicitud de vendedor';
 
-        // Cargar solicitud existente si no vino por parámetro
         let a = application;
         if (!a) {
             try {
@@ -81,7 +122,7 @@
         if (rejected) {
             bannerHtml = `
                 <div class="seller-rejected">
-                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
                     <div>
                         <strong>Solicitud no aprobada</strong>
                         ${a.rejectionReason
@@ -92,7 +133,7 @@
         } else if (needsInfo) {
             bannerHtml = `
                 <div class="seller-rejected" style="background: var(--star-light); color: #92400E;">
-                    <i class="fa-solid fa-circle-info"></i>
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
                     <div>
                         <strong>Información solicitada por administración</strong>
                         ${a.adminNote
@@ -110,10 +151,10 @@
                     <label>Tipo de vendedor</label>
                     <div class="seller-type-toggle" id="seller-type-toggle">
                         <button type="button" data-type="person" class="${type==='person'?'active':''}">
-                            <i class="fa-solid fa-user"></i> Persona
+                            <i class="fa-solid fa-user" aria-hidden="true"></i> Persona
                         </button>
                         <button type="button" data-type="business" class="${type==='business'?'active':''}">
-                            <i class="fa-solid fa-shop"></i> Negocio
+                            <i class="fa-solid fa-shop" aria-hidden="true"></i> Negocio
                         </button>
                     </div>
                 </div>
@@ -162,10 +203,10 @@
                     <label>Método de contacto</label>
                     <div class="seller-type-toggle" id="seller-contact-toggle">
                         <button type="button" data-contact="phone" class="${contact==='phone'?'active':''}">
-                            <i class="fa-solid fa-phone"></i> Llamada
+                            <i class="fa-solid fa-phone" aria-hidden="true"></i> Llamada
                         </button>
                         <button type="button" data-contact="whatsapp" class="${contact==='whatsapp'?'active':''}">
-                            <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp
                         </button>
                     </div>
                 </div>
@@ -175,14 +216,21 @@
                     <span>Acepto los términos y confirmo que la información es verídica.</span>
                 </label>
 
-                <div class="form-error hidden" id="seller-error"></div>
+                <div class="form-error hidden" id="seller-error" role="alert"></div>
 
                 <button class="btn-primary btn-large" id="seller-submit">
-                    <i class="fa-solid fa-paper-plane"></i> ${needsInfo || rejected ? 'Reenviar solicitud' : 'Enviar solicitud'}
+                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> ${needsInfo || rejected ? 'Reenviar solicitud' : 'Enviar solicitud'}
                 </button>
             </div>`;
 
-        // toggles
+        /* Reencuadrar el foco tras cambiar de vista */
+        if (window.FocusTrap && FocusTrap.isActive(modal)) {
+            const initial = _getInitialFocus();
+            if (initial && typeof initial.focus === 'function') {
+                try { initial.focus(); } catch (e) {}
+            }
+        }
+
         const typeToggle = bodyEl.querySelector('#seller-type-toggle');
         const businessGroup = bodyEl.querySelector('#seller-business-group');
         const updateBusinessVisibility = () => {
@@ -239,7 +287,7 @@
 
         const btn = bodyEl.querySelector('#seller-submit');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Enviando…';
 
         try {
             await SellerService.submitApplication(payload);
@@ -251,7 +299,7 @@
             const msg = ErrorHandler.toUserMessage(error, { context: 'seller.submit' });
             showErr(msg);
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar solicitud';
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar solicitud';
         }
     }
 
@@ -259,7 +307,7 @@
         titleEl.textContent = 'Solicitud en revisión';
         bodyEl.innerHTML = `
             <div class="seller-status-view pending">
-                <div class="seller-status-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="seller-status-icon"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></div>
                 <h4>Tu solicitud está en revisión</h4>
                 <p>Mientras tanto puedes seguir usando PipGo como usuario normal.</p>
                 <button class="btn-outline btn-large" id="seller-close-view">Entendido</button>
@@ -271,11 +319,11 @@
         titleEl.textContent = 'Panel de vendedor';
         bodyEl.innerHTML = `
             <div class="seller-status-view approved">
-                <div class="seller-status-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="seller-status-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></div>
                 <h4>¡Eres vendedor aprobado!</h4>
                 <p>Ya puedes crear y administrar tus publicaciones.</p>
                 <button class="btn-primary btn-large" id="seller-new-pub">
-                    <i class="fa-solid fa-plus"></i> Nueva publicación
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Nueva publicación
                 </button>
             </div>`;
         bodyEl.querySelector('#seller-new-pub').addEventListener('click', () => {
@@ -288,7 +336,7 @@
         titleEl.textContent = 'Cuenta suspendida';
         bodyEl.innerHTML = `
             <div class="seller-status-view suspended">
-                <div class="seller-status-icon"><i class="fa-solid fa-ban"></i></div>
+                <div class="seller-status-icon"><i class="fa-solid fa-ban" aria-hidden="true"></i></div>
                 <h4>Vendedor suspendido temporalmente</h4>
                 <p>Puedes seguir usando PipGo como usuario normal. Contacta a soporte si crees que es un error.</p>
                 <button class="btn-outline btn-large" id="seller-close-view">Cerrar</button>
@@ -300,10 +348,10 @@
     function init() {
         if (initialized) return;
         initialized = true;
-        modal   = document.getElementById('seller-modal');
-        closeBtn= document.getElementById('seller-close');
-        titleEl = document.getElementById('seller-modal-title');
-        bodyEl  = document.getElementById('seller-modal-body');
+        modal    = document.getElementById('seller-modal');
+        closeBtn = document.getElementById('seller-close');
+        titleEl  = document.getElementById('seller-modal-title');
+        bodyEl   = document.getElementById('seller-modal-body');
 
         closeBtn.addEventListener('click', close);
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });

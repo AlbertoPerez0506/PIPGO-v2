@@ -1,19 +1,21 @@
 /* =====================================================
    PIPGO · MESSAGING UI
    Inbox + chat overlay en tiempo real.
-   - Abrir desde publicación: crea o reutiliza conversación
-     y solo la primera vez inserta "Vi tu publicación de X."
-   - Abrir desde Mensajes (vendedor seguido): abre chat
-     SIN mensaje automático.
-   - Buscador filtra vendedores seguidos.
-   - Emoji picker estilo WhatsApp.
-   - Apertura inmediata del overlay (sin esperas de red).
+   -----------------------------------------------------
+   v3.3 (Ronda 5 fixes):
+   - Body lock migrado a BodyLock.acquire/release
+     (openOverlay + openEditModal). Resuelve el bug del
+     "SellerProfile sobre Chat deja chat con body scrolleable".
+   - Handler ESC capture respeta overlays superiores:
+     si hay SellerProfile, Lightbox, Auth, etc. abierto,
+     NO consume el ESC (deja que app.js lo procese).
+   - Heredado v3.2 (Ronda 4): AriaDisabled en send/edit +
+     FocusTrap en chat-edit-modal.
    ===================================================== */
 
 (function () {
     'use strict';
 
-    /* ---------- Estado ---------- */
     let initialized = false;
 
     // Inbox
@@ -28,6 +30,10 @@
         messageMenuEl,
         emojiBtn, emojiPicker, emojiTabs, emojiScroll;
 
+    // Modal de edición de mensaje
+    let editModalEl, editInputEl, editCancelBtn, editSaveBtn;
+    let editingMessage = null;
+
     // Emoji
     let recentEmojis = [];
     let currentEmojiCategory = 'smileys';
@@ -36,11 +42,14 @@
     let openChatToken = 0;
     let openingSellerProfile = false;
 
+    // F-06: evitar spamear "Preparando la conversación…"
+    let pendingSendToastShown = false;
+
     // Búsqueda en inbox
     let sellerSearchToken = 0;
     let inboxSearchDebounce = null;
     const INBOX_SEARCH_DEBOUNCE_MS = 200;
-    let followedSellersCache = null; // { at, data }
+    let followedSellersCache = null;
 
     let conversations = [];
     let currentChat = {
@@ -59,10 +68,65 @@
 
     let suppressPopstate = false;
     let chatHistoryPushed = false;
-    let bodyLockPrev = '';
+
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
+
+    /* Ronda 5: chequea si hay un overlay de mayor z-index
+       abierto encima del chat (z-chat 250). Si sí, el ESC
+       debe ir a app.js, no consumirse aquí. */
+    function _somethingAboveChatIsOpen() {
+        if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) return true;
+        if (window.PublicationUI && PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) return true;
+        if (window.AuthUI && AuthUI.isAuthModalOpen && AuthUI.isAuthModalOpen()) return true;
+        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) return true;
+        if (window.ProfileUI && ProfileUI.isSettingsModalOpen && ProfileUI.isSettingsModalOpen()) return true;
+        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) return true;
+        if (window.PublicationUI) {
+            if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) return true;
+            if (PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) return true;
+            if (PublicationUI.isDraftModalOpen && PublicationUI.isDraftModalOpen && PublicationUI.isDraftModalOpen()) return true;
+            if (PublicationUI.isUnsavedModalOpen && PublicationUI.isUnsavedModalOpen && PublicationUI.isUnsavedModalOpen()) return true;
+        }
+        const confirmModal = document.getElementById('confirm-modal');
+        if (confirmModal && !confirmModal.classList.contains('hidden')) return true;
+        const sellerModal = document.getElementById('seller-modal');
+        if (sellerModal && !sellerModal.classList.contains('hidden')) return true;
+        return false;
+    }
+
+    /* =====================================================
+       FIX DOBLE TAP
+       ===================================================== */
+    function attachTapHandler(el, handler) {
+        el.style.touchAction = 'manipulation';
+        el.style.webkitTapHighlightColor = 'transparent';
+
+        let lastTapAt = 0;
+
+        el.addEventListener('click', (e) => {
+            const now = Date.now();
+            if (now - lastTapAt < 400) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            lastTapAt = now;
+            handler(e);
+        });
+    }
 
     /* =====================================================
        EMOJI CATALOG
+       -----------------------------------------------------
+       (idéntico al archivo original, sin cambios)
        ===================================================== */
     const EMOJI_CATEGORIES = {
         smileys: {
@@ -210,14 +274,13 @@
         if (url) {
             return `<img src="${Formatters.safeUrl(url)}" alt="">`;
         }
-        return `<i class="fa-solid ${fallbackIcon}"></i>`;
+        return `<i class="fa-solid ${fallbackIcon}" aria-hidden="true"></i>`;
     }
 
     /* =====================================================
        ENTRAR A LA VISTA MENSAJES
        ===================================================== */
     async function onEnterMessaging() {
-        // Reset del buscador al entrar
         if (searchInput && searchInput.value) {
             searchInput.value = '';
             clearSearchBtn.classList.remove('visible');
@@ -255,7 +318,7 @@
     function renderInboxError() {
         contentEl.innerHTML = `
             <div class="msg-empty">
-                <div class="msg-empty-icon"><i class="fa-solid fa-cloud-exclamation"></i></div>
+                <div class="msg-empty-icon"><i class="fa-solid fa-cloud-exclamation" aria-hidden="true"></i></div>
                 <h4>No pudimos cargar tus mensajes</h4>
                 <p>Revisa tu conexión e inténtalo de nuevo.</p>
             </div>`;
@@ -264,11 +327,11 @@
     function renderVisitorState() {
         contentEl.innerHTML = `
             <div class="msg-empty">
-                <div class="msg-empty-icon"><i class="fa-solid fa-comments"></i></div>
+                <div class="msg-empty-icon"><i class="fa-solid fa-comments" aria-hidden="true"></i></div>
                 <h4>Inicia sesión para ver tus mensajes</h4>
                 <p>Cuando contactes a un vendedor, tus conversaciones aparecerán aquí.</p>
                 <button class="btn-primary" id="msg-go-auth" type="button">
-                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión
+                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
                 </button>
             </div>`;
         const b = document.getElementById('msg-go-auth');
@@ -278,7 +341,7 @@
     function renderInboxEmpty() {
         contentEl.innerHTML = `
             <div class="msg-empty">
-                <div class="msg-empty-icon"><i class="fa-solid fa-comment-dots"></i></div>
+                <div class="msg-empty-icon"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i></div>
                 <h4>Aún no tienes conversaciones</h4>
                 <p>Cuando contactes a un vendedor, aparecerá aquí.</p>
             </div>`;
@@ -287,11 +350,11 @@
     function renderNoFollowedSellers() {
         contentEl.innerHTML = `
             <div class="msg-empty">
-                <div class="msg-empty-icon"><i class="fa-solid fa-user-plus"></i></div>
+                <div class="msg-empty-icon"><i class="fa-solid fa-user-plus" aria-hidden="true"></i></div>
                 <h4>Aún no sigues vendedores</h4>
                 <p>Sigue a un vendedor desde su perfil para iniciar una conversación desde aquí.</p>
                 <button class="btn-primary" id="msg-explore-sellers" type="button">
-                    <i class="fa-solid fa-magnifying-glass"></i> Explorar vendedores
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Explorar vendedores
                 </button>
             </div>`;
         const b = document.getElementById('msg-explore-sellers');
@@ -301,7 +364,7 @@
     function renderNoSellerResults(query) {
         contentEl.innerHTML = `
             <div class="msg-empty">
-                <div class="msg-empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <div class="msg-empty-icon"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></div>
                 <h4>Sin coincidencias</h4>
                 <p>Ningún vendedor seguido coincide con "${Formatters.escapeHtml(query)}".</p>
             </div>`;
@@ -334,7 +397,7 @@
 
         row.innerHTML = `
             <div class="msg-avatar">
-                <i class="fa-solid fa-user"></i>
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
             </div>
             <div class="msg-body">
                 <div class="msg-body-top">
@@ -346,11 +409,10 @@
             ${unread ? '<span class="msg-unread-dot"></span>' : ''}
         `;
 
-        row.addEventListener('click', () => {
+        attachTapHandler(row, () => {
             openChat({ conversationId: conv.id, otherUid });
         });
 
-        // Hidratar identidad pública (cache) sin bloquear el click
         if (otherUid) {
             SellerProfileService.getPublicProfile(otherUid).then(profile => {
                 if (!profile) return;
@@ -454,7 +516,7 @@
 
         const avatarHtml_ = seller.avatarUrl
             ? `<img src="${Formatters.safeUrl(seller.avatarUrl)}" alt="">`
-            : `<i class="fa-solid fa-user"></i>`;
+            : `<i class="fa-solid fa-user" aria-hidden="true"></i>`;
 
         const name = seller.displayName || seller.businessName || '';
         const category = seller.category || '';
@@ -473,7 +535,7 @@
             <i class="fa-solid fa-comment-dots msg-row-cta" aria-hidden="true"></i>
         `;
 
-        row.addEventListener('click', () => {
+        attachTapHandler(row, () => {
             openChat({ otherUid: seller.uid });
         });
 
@@ -494,6 +556,8 @@
         closeEmojiPicker();
         closeMessageMenu();
 
+        pendingSendToastShown = false;
+
         currentChat.otherUid = otherUid || null;
         currentChat.publicationContext = publicationContext;
         currentChat.messages = [];
@@ -503,18 +567,16 @@
         currentChat.otherProfile = null;
         currentChat._savedSelection = null;
 
-        messagesEl.innerHTML = `<div class="chat-loading"><i class="fa-solid fa-spinner fa-spin"></i> Abriendo conversación…</div>`;
+        messagesEl.innerHTML = `<div class="chat-loading"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abriendo conversación…</div>`;
         inputEl.value = '';
         autoResizeInput();
         renderContextBanner();
         renderChatHeader();
         newMessagesEl.classList.add('hidden');
 
-        // Mostrar el overlay YA, sin ningún await previo
         openOverlay();
         if (window.HapticsService) HapticsService.light();
 
-        // Resolver otherUid si no lo tenemos (fallback).
         if (!otherUid && conversationId) {
             const local = conversations.find(c => c.id === conversationId);
             if (local) {
@@ -541,14 +603,12 @@
             return;
         }
 
-        // NUEVO: impedir abrir una conversación consigo mismo
         if (otherUid === AppState.currentUser.uid) {
             Toast.info('No puedes abrir una conversación contigo mismo.');
             if (myToken === openChatToken) closeOverlay();
             return;
         }
 
-        // Cargar perfil del vendedor (background)
         if (window.SellerProfileService && otherUid) {
             try {
                 const profile = await SellerProfileService.getPublicProfile(otherUid);
@@ -562,7 +622,6 @@
 
         if (myToken !== openChatToken) return;
 
-        // Crear conversación si no existe
         if (!conversationId) {
             try {
                 const { conversation, created } = await ConversationService.getOrCreateConversation(
@@ -570,9 +629,8 @@
                 );
                 if (myToken !== openChatToken) return;
                 currentChat.conversationId = conversation.id;
+                pendingSendToastShown = false;
 
-                // Retry del mensaje contextual: se envía si la conversación
-                // fue creada ahora o si existe pero está vacía.
                 const conversationIsEmpty = created || !conversation.lastMessage;
 
                 if (fromPublication && conversationIsEmpty &&
@@ -599,6 +657,7 @@
             }
         } else {
             currentChat.conversationId = conversationId;
+            pendingSendToastShown = false;
         }
 
         if (myToken !== openChatToken) return;
@@ -608,13 +667,9 @@
         ConversationService.markAsRead(currentChat.conversationId, AppState.currentUser.uid).catch(() => {});
     }
 
-    /**
-     * Punto de entrada usado por Product Sheet y Seller Profile.
-     */
     async function openChatWith(sellerUid, { fromPublication = false, publicationContext = null } = {}) {
         if (!sellerUid) { Toast.warning('Vendedor no disponible.'); return; }
 
-        // NUEVO: impedir auto-mensaje
         if (AppState.currentUser && sellerUid === AppState.currentUser.uid) {
             Toast.info('No puedes enviarte mensajes a ti mismo.');
             return;
@@ -724,7 +779,7 @@
             const empty = document.createElement('div');
             empty.className = 'chat-empty';
             empty.innerHTML = `
-                <div class="chat-empty-icon"><i class="fa-regular fa-comments"></i></div>
+                <div class="chat-empty-icon"><i class="fa-regular fa-comments" aria-hidden="true"></i></div>
                 <p>Inicia la conversación.</p>`;
             messagesEl.appendChild(empty);
             return;
@@ -779,7 +834,7 @@
         if (msg.type === 'publication_context' && msg.publicationName) {
             const ref = document.createElement('div');
             ref.className = 'chat-context-mini';
-            ref.innerHTML = `<i class="fa-solid fa-tag"></i> ${Formatters.escapeHtml(msg.publicationName)}`;
+            ref.innerHTML = `<i class="fa-solid fa-tag" aria-hidden="true"></i> ${Formatters.escapeHtml(msg.publicationName)}`;
             wrap.querySelector('.chat-bubble').appendChild(ref);
         }
 
@@ -817,7 +872,7 @@
             b.type = 'button';
             b.dataset.action = action;
             b.className = danger ? 'danger' : '';
-            b.innerHTML = `<i class="fa-solid ${icon}"></i> ${label}`;
+            b.innerHTML = `<i class="fa-solid ${icon}" aria-hidden="true"></i> ${label}`;
             b.addEventListener('click', () => handleMenuAction(action));
             return b;
         };
@@ -861,7 +916,7 @@
                     Toast.warning('No se pudo copiar.');
                 }
             } else if (action === 'edit') {
-                openEditFlow(msg);
+                openEditModal(msg);
             } else if (action === 'delete-me') {
                 await MessageService.deleteForMe(currentChat.conversationId, msg.id, uid);
                 Toast.success('Mensaje oculto.');
@@ -883,17 +938,76 @@
         }
     }
 
-    function openEditFlow(msg) {
-        const current = msg.text || '';
-        const newText = window.prompt('Editar mensaje:', current);
-        if (newText == null) return;
-        const check = MessageService.sanitizeText(newText);
-        if (!check.valid) { Toast.error(check.error); return; }
+    /* =====================================================
+       MODAL DE EDICIÓN
+       -----------------------------------------------------
+       Ronda 5: BodyLock + FocusTrap.
+       ===================================================== */
+    function openEditModal(msg) {
+        if (!editModalEl) return;
+        editingMessage = msg;
+        editInputEl.value = msg.text || '';
+        editModalEl.classList.remove('hidden');
 
-        MessageService.editMessage(
-            currentChat.conversationId, msg.id, AppState.currentUser.uid, check.value
-        ).then(() => Toast.success('Mensaje actualizado.'))
-         .catch((e) => Toast.error(ErrorHandler.toUserMessage(e, { context: 'messaging.edit' })));
+        /* Ronda 5: BodyLock.acquire() */
+        _lockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.activate(editModalEl, editInputEl);
+        }
+        setTimeout(() => {
+            try {
+                editInputEl.focus();
+                editInputEl.setSelectionRange(editInputEl.value.length, editInputEl.value.length);
+            } catch (e) {}
+        }, 40);
+    }
+
+    function closeEditModal() {
+        if (!editModalEl) return;
+        editModalEl.classList.add('hidden');
+        editingMessage = null;
+        editInputEl.value = '';
+
+        /* Ronda 5: BodyLock.release() */
+        _unlockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(editModalEl);
+        }
+    }
+
+    async function saveEditModal() {
+        const msg = editingMessage;
+        if (!msg) return;
+
+        const check = MessageService.sanitizeText(editInputEl.value);
+        if (!check.valid) {
+            Toast.error(check.error);
+            return;
+        }
+
+        if (check.value === (msg.text || '')) {
+            closeEditModal();
+            return;
+        }
+
+        if (window.AriaDisabled) AriaDisabled.set(editSaveBtn, true);
+        else editSaveBtn.disabled = true;
+
+        try {
+            await MessageService.editMessage(
+                currentChat.conversationId, msg.id, AppState.currentUser.uid, check.value
+            );
+            Toast.success('Mensaje actualizado.');
+            closeEditModal();
+        } catch (e) {
+            Logger.error('saveEditModal', e);
+            Toast.error(ErrorHandler.toUserMessage(e, { context: 'messaging.edit' }));
+        } finally {
+            if (window.AriaDisabled) AriaDisabled.set(editSaveBtn, false);
+            else editSaveBtn.disabled = false;
+        }
     }
 
     /* =====================================================
@@ -908,7 +1022,7 @@
         btn.className = 'chat-emoji-btn';
         btn.type = 'button';
         btn.setAttribute('aria-label', 'Abrir emojis');
-        btn.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
+        btn.innerHTML = '<i class="fa-regular fa-face-smile" aria-hidden="true"></i>';
         composer.insertBefore(btn, composer.firstChild);
 
         const picker = document.createElement('div');
@@ -1000,7 +1114,7 @@
         emojiTabs.innerHTML = cats.map(c => `
             <button class="emoji-tab${c.key === currentEmojiCategory ? ' active' : ''}"
                     data-cat="${c.key}" type="button" aria-label="${c.key}">
-                <i class="fa-solid ${c.icon}"></i>
+                <i class="fa-solid ${c.icon}" aria-hidden="true"></i>
             </button>
         `).join('');
     }
@@ -1102,10 +1216,10 @@
     function updateEmojiBtnIcon() {
         if (!emojiBtn) return;
         if (emojiPicker.classList.contains('hidden')) {
-            emojiBtn.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
+            emojiBtn.innerHTML = '<i class="fa-regular fa-face-smile" aria-hidden="true"></i>';
             emojiBtn.setAttribute('aria-label', 'Abrir emojis');
         } else {
-            emojiBtn.innerHTML = '<i class="fa-regular fa-keyboard"></i>';
+            emojiBtn.innerHTML = '<i class="fa-solid fa-keyboard" aria-hidden="true"></i>';
             emojiBtn.setAttribute('aria-label', 'Cerrar emojis');
         }
     }
@@ -1127,9 +1241,18 @@
             Toast.warning(check.error);
             return;
         }
-        if (!currentChat.conversationId) return;
 
-        sendBtn.disabled = true;
+        if (!currentChat.conversationId) {
+            if (!pendingSendToastShown) {
+                pendingSendToastShown = true;
+                Toast.info('Preparando la conversación…');
+            }
+            return;
+        }
+
+        if (window.AriaDisabled) AriaDisabled.set(sendBtn, true);
+        else sendBtn.disabled = true;
+
         inputEl.value = '';
         currentChat._savedSelection = null;
         autoResizeInput();
@@ -1154,17 +1277,19 @@
             inputEl.value = check.value;
             autoResizeInput();
         } finally {
-            sendBtn.disabled = false;
+            if (window.AriaDisabled) AriaDisabled.set(sendBtn, false);
+            else sendBtn.disabled = false;
         }
     }
 
     /* =====================================================
        OVERLAY / NAV
+       -----------------------------------------------------
+       Ronda 5: BodyLock.acquire/release.
        ===================================================== */
     function openOverlay() {
         overlay.classList.remove('hidden');
-        bodyLockPrev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        _lockBody();  /* Ronda 5 */
         if (!chatHistoryPushed) {
             history.pushState({ view: AppState.currentView, overlay: 'chat' }, '', '');
             chatHistoryPushed = true;
@@ -1174,16 +1299,16 @@
     function closeOverlay(syncHistory = true) {
         closeEmojiPicker();
         closeMessageMenu();
+        closeEditModal();
         overlay.classList.add('hidden');
-        document.body.style.overflow = bodyLockPrev || '';
-        bodyLockPrev = '';
+
+        _unlockBody();  /* Ronda 5 */
 
         if (currentChat.unsubscribe) {
             try { currentChat.unsubscribe(); } catch (e) {}
             currentChat.unsubscribe = null;
         }
 
-        // NUEVO: resetear contexto de chat
         currentChat.conversationId = null;
         currentChat.otherUid = null;
         currentChat.otherProfile = null;
@@ -1192,6 +1317,8 @@
         currentChat.oldestCreatedAt = null;
         currentChat.hasMore = true;
         currentChat.loadedOnce = false;
+
+        pendingSendToastShown = false;
 
         if (chatHistoryPushed) {
             chatHistoryPushed = false;
@@ -1231,6 +1358,11 @@
         inputEl = document.getElementById('chat-input');
         sendBtn = document.getElementById('chat-send');
         messageMenuEl = document.getElementById('chat-message-menu');
+
+        editModalEl = document.getElementById('chat-edit-modal');
+        editInputEl = document.getElementById('chat-edit-input');
+        editCancelBtn = document.getElementById('chat-edit-cancel');
+        editSaveBtn = document.getElementById('chat-edit-save');
 
         createEmojiPicker();
         initEmojiPicker();
@@ -1300,6 +1432,25 @@
 
         if (sendBtn) sendBtn.addEventListener('click', sendCurrent);
 
+        if (editCancelBtn) editCancelBtn.addEventListener('click', closeEditModal);
+        if (editSaveBtn) editSaveBtn.addEventListener('click', saveEditModal);
+        if (editModalEl) {
+            editModalEl.addEventListener('click', (e) => {
+                if (e.target === editModalEl) closeEditModal();
+            });
+        }
+        if (editInputEl) {
+            editInputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeEditModal();
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    saveEditModal();
+                }
+            });
+        }
+
         document.addEventListener('click', (e) => {
             if (!messageMenuEl || messageMenuEl.classList.contains('hidden')) return;
             if (messageMenuEl.contains(e.target)) return;
@@ -1308,26 +1459,41 @@
 
         document.addEventListener('scroll', () => closeMessageMenu(), true);
 
+        /* Ronda 5: si hay algo por encima del chat, no consumir
+           el ESC — dejamos que app.js lo procese según z-index. */
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
 
+            if (_somethingAboveChatIsOpen()) return;
+
+            if (editModalEl && !editModalEl.classList.contains('hidden')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closeEditModal();
+                return;
+            }
+
             if (emojiPicker && !emojiPicker.classList.contains('hidden')) {
                 e.preventDefault();
+                e.stopImmediatePropagation();
                 closeEmojiPicker();
                 return;
             }
 
             if (messageMenuEl && !messageMenuEl.classList.contains('hidden')) {
                 e.preventDefault();
+                e.stopImmediatePropagation();
                 closeMessageMenu();
                 return;
             }
 
             if (overlay && !overlay.classList.contains('hidden')) {
                 e.preventDefault();
+                e.stopImmediatePropagation();
                 closeOverlay();
+                return;
             }
-        });
+        }, true);
     }
 
     window.MessagingUI = {

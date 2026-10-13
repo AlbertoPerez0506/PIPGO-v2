@@ -1,15 +1,37 @@
 /* =====================================================
    PIPGO · APP BOOTSTRAP
    -----------------------------------------------------
-   PLAN C:
-   - Ya no se dispara GPS automáticamente al arrancar.
-   - El handler global de Escape respeta el modal de
-     confirmación genérico.
+   v2.5 (Ronda 5 — fixes de bugs reales):
+   - initGlobalEscapeHandler() reordenado por z-index
+     descendente:
+       500 → Auth, Admin, Settings, Preview, Filter,
+             Draft, Unsaved, Seller
+       300 → Lightbox
+       260 → SellerProfile
+       100 → ProductSheet
+     Esto corrige el bug donde ESC cerraba el sheet cuando
+     Auth estaba encima.
+   - Ahora también cierra Draft/Unsaved por ESC usando las
+     nuevas APIs de PublicationUI.
+   - BodyLock.reset() en logout sigue como red de seguridad.
+   - Comentario actualizado para reflejar los modales con
+     capture propio (ConfirmDialog, LegalUI, MessagingUI).
 
-   PLAN D (fix):
-   - Cuando el usuario hace login estando YA en la vista
-     Mensajes (viendo "Inicia sesión"), hay que refrescar
-     el contenido. Antes el refresh solo ocurría en logout.
+   Heredado v2.4:
+   - window.BodyLock (conteo anidado) disponible global.
+   - initGlobalEscapeHandler verificado vs FocusTrap.
+
+   Heredado v2.3:
+   - Storage user_city_cache único, migración legacy.
+
+   Heredado v2.2:
+   - initLocationHeader con cache TTL + refresh silencioso.
+   - silentAutoRefreshCity solo con permiso granted.
+
+   Heredado v2.1:
+   - Guarda contra Firebase no disponible (F-07).
+   - initializeFeatures con try/catch por feature.
+   - F-17: limpieza completa del chip y caches tras logout.
    ===================================================== */
 
 (function () {
@@ -17,16 +39,68 @@
 
     let cityDetectionInFlight = null;
 
+    /* =====================================================
+       BODY LOCK — helper global (Ronda 4, integrado Ronda 5)
+       -----------------------------------------------------
+       Conteo anidado: si dos modales piden lock, el body
+       permanece bloqueado hasta que el último lo libere.
+
+       Uso desde cualquier módulo:
+         BodyLock.acquire();   // al abrir un modal
+         BodyLock.release();   // al cerrar ese modal
+         BodyLock.isLocked();  // true | false
+
+       Fallback defensivo (si por alguna razón este script no
+       se cargó, los modales usan `document.body.style.overflow`
+       directamente).
+       ===================================================== */
+    let _bodyLockCount = 0;
+    let _bodyLockOriginal = '';
+
+    window.BodyLock = {
+        acquire() {
+            if (_bodyLockCount === 0) {
+                _bodyLockOriginal = document.body.style.overflow || '';
+                document.body.style.overflow = 'hidden';
+            }
+            _bodyLockCount++;
+        },
+        release() {
+            _bodyLockCount = Math.max(0, _bodyLockCount - 1);
+            if (_bodyLockCount === 0) {
+                document.body.style.overflow = _bodyLockOriginal || '';
+                _bodyLockOriginal = '';
+            }
+        },
+        isLocked() { return _bodyLockCount > 0; },
+        /* Escape hatch: fuerza reset (por si algo se cuelga) */
+        reset() {
+            _bodyLockCount = 0;
+            document.body.style.overflow = _bodyLockOriginal || '';
+            _bodyLockOriginal = '';
+        }
+    };
+
     function initializeFeatures() {
-        AuthUI.init();
-        ProfileUI.init();
-        PublicationUI.init();
-        FavoriteUI.init();
-        SellerUI.init();
-        AdminUI.init();
-        SellerProfileUI.init();
-        MessagingUI.init();
-        LegalUI.init();
+        const features = [
+            ['AuthUI',        () => AuthUI.init()],
+            ['ProfileUI',     () => ProfileUI.init()],
+            ['PublicationUI', () => PublicationUI.init()],
+            ['FavoriteUI',    () => FavoriteUI.init()],
+            ['SellerUI',      () => SellerUI.init()],
+            ['AdminUI',       () => AdminUI.init()],
+            ['SellerProfileUI', () => SellerProfileUI.init()],
+            ['MessagingUI',   () => MessagingUI.init()],
+            ['LegalUI',       () => LegalUI.init()]
+        ];
+
+        features.forEach(([name, initFn]) => {
+            try {
+                initFn();
+            } catch (e) {
+                Logger.error(`[bootstrap] ${name}.init falló`, e);
+            }
+        });
     }
 
     function getTimeGreeting() {
@@ -53,24 +127,28 @@
         textEl.textContent = cityName || 'Sin ubicación';
     }
 
-    async function detectAndUpdateCity() {
+    async function detectAndUpdateCity({ force = false } = {}) {
         if (cityDetectionInFlight) return cityDetectionInFlight;
 
         cityDetectionInFlight = (async () => {
             try {
-                const { cityName } = await LocationService.detectUserCity();
+                const { cityName } = await LocationService.detectUserCity({
+                    useStorageCache: !force
+                });
                 if (cityName) {
                     AppState.userCity = cityName;
-                    Storage.set('user_city', cityName);
                     updateLocationChip(cityName);
                     return;
                 }
-            } catch (e) { /* silencioso: el usuario verá el estado final */ }
+            } catch (e) { /* silencioso */ }
 
-            const cached = Storage.get('user_city', null);
-            if (cached) {
-                AppState.userCity = cached;
-                updateLocationChip(cached);
+            const cached = LocationService.getCachedCity
+                ? LocationService.getCachedCity({ allowStale: true })
+                : null;
+
+            if (cached && cached.city) {
+                AppState.userCity = cached.city;
+                updateLocationChip(cached.city);
             } else {
                 updateLocationChip('Sin ubicación');
             }
@@ -83,11 +161,35 @@
         }
     }
 
+    async function silentAutoRefreshCity() {
+        try {
+            if (!window.LocationService || !LocationService.getPermissionState) return;
+
+            const state = await LocationService.getPermissionState();
+            if (state !== 'granted') return;
+
+            const { cityName } = await LocationService.detectUserCity({
+                useStorageCache: false
+            });
+
+            if (cityName && cityName !== AppState.userCity) {
+                AppState.userCity = cityName;
+                updateLocationChip(cityName);
+            }
+        } catch (e) { /* silencioso */ }
+    }
+
     function initLocationHeader() {
-        const cached = Storage.get('user_city', null);
-        if (cached) {
-            AppState.userCity = cached;
-            updateLocationChip(cached);
+        let entry = null;
+
+        if (window.LocationService && LocationService.getCachedCity) {
+            entry = LocationService.getCachedCity({ allowStale: true });
+        }
+
+        if (entry && entry.city) {
+            AppState.userCity = entry.city;
+            updateLocationChip(entry.city);
+            if (!entry.isFresh) silentAutoRefreshCity();
         } else {
             updateLocationChip('Sin ubicación');
         }
@@ -96,7 +198,7 @@
         if (chip) {
             chip.addEventListener('click', async () => {
                 Toast.info('Detectando tu ubicación…');
-                await detectAndUpdateCity();
+                await detectAndUpdateCity({ force: true });
                 if (AppState.userCity) {
                     Toast.success(`Ubicación: ${AppState.userCity}`);
                 } else {
@@ -112,8 +214,8 @@
         const hero = document.getElementById('home-hero');
         if (!main || !header || !hero) return;
 
-        const DELTA_THRESHOLD   = 18;
-        const MIN_Y             = 80;
+        const DELTA_THRESHOLD    = 18;
+        const MIN_Y              = 80;
         const TRANSITION_LOCK_MS = 260;
 
         let lastY = main.scrollTop;
@@ -152,7 +254,6 @@
 
             requestAnimationFrame(() => {
                 ticking = false;
-
                 const y = main.scrollTop;
 
                 if (AppState.currentView !== 'home') {
@@ -222,7 +323,6 @@
             if (!pulling || refreshing) return;
             const dy = e.touches[0].clientY - startY;
             if (dy <= 0) { pulling = false; return; }
-
             const clamped = Math.min(dy * 0.5, MAX_PULL);
             indicator.classList.add('visible', 'pulling');
             indicator.style.transform = `translateY(${clamped - 60}px)`;
@@ -249,7 +349,7 @@
                         AppState.currentPublications = pubs;
                         PublicationUI.onEnterHome();
                         PublicationUI.renderHomeFilters(pubs);
-                    } else if (AppState.currentView === 'search') {
+                    } else if (AppState.currentView === 'search' && window.PublicationUI) {
                         const pubs = await PublicationService.getActivePublications();
                         AppState.currentPublications = pubs;
                         PublicationUI.onEnterSearch();
@@ -285,7 +385,9 @@
 
         switch (action.type) {
             case 'toggleFavorite':
-                if (window.FavoriteUI) FavoriteUI.toggleFavorite(action.publicationId);
+                if (window.FavoriteUI && FavoriteUI.toggleFavorite) {
+                    FavoriteUI.toggleFavorite(action.publicationId);
+                }
                 break;
 
             case 'openChatWith':
@@ -348,28 +450,46 @@
                     Logger.error('Error cargando perfil al autenticar', error);
                     AppState.currentProfile = null;
                 }
+
+                silentAutoRefreshCity();
             } else {
                 AppState.resetSession();
+
+                Storage.remove('user_city_cache');
+                Storage.remove('user_city');
+                updateLocationChip('Sin ubicación');
+
+                if (window.LocationService && LocationService.clearCache) {
+                    try { LocationService.clearCache(); } catch (e) {}
+                }
+
                 if (wasAuthenticated && window.PublicationUI &&
                     PublicationUI.stopHomeSubscription) {
                     PublicationUI.stopHomeSubscription();
                 }
+
+                /* Ronda 5: red de seguridad. Si quedó algún body
+                   lock colgado (ej. usuario cerró sesión con un
+                   modal abierto), lo reseteamos. */
+                if (window.BodyLock) BodyLock.reset();
             }
 
-            // FIX: refrescar la vista Mensajes cada vez que cambia el
-            // estado de autenticación (login Y logout). Antes solo se
-            // refrescaba en logout, por eso tras iniciar sesión estando
-            // en Mensajes la vista seguía mostrando "Inicia sesión".
-            if (AppState.currentView === 'messaging' && window.MessagingUI) {
+            if (AppState.currentView === 'messaging' && window.MessagingUI && MessagingUI.onEnterMessaging) {
                 try { MessagingUI.onEnterMessaging(); } catch (e) {
                     Logger.error('Refresh messaging post-auth falló', e);
                 }
             }
 
             try { updateHomeGreeting(user); } catch (e) {}
-            try { if (window.PublicationUI && PublicationUI.updateAuthUI) PublicationUI.updateAuthUI(); } catch (e) {}
-            try { if (window.ProfileUI && ProfileUI.renderProfile) ProfileUI.renderProfile(); } catch (e) {}
-            try { if (window.FavoriteUI && FavoriteUI.updateAllButtons) FavoriteUI.updateAllButtons(); } catch (e) {}
+            try {
+                if (window.PublicationUI && PublicationUI.updateAuthUI) PublicationUI.updateAuthUI();
+            } catch (e) {}
+            try {
+                if (window.ProfileUI && ProfileUI.renderProfile) ProfileUI.renderProfile();
+            } catch (e) {}
+            try {
+                if (window.FavoriteUI && FavoriteUI.updateAllButtons) FavoriteUI.updateAllButtons();
+            } catch (e) {}
 
             if (user && AppState.pendingAction) {
                 setTimeout(runPendingAction, 180);
@@ -377,62 +497,83 @@
         });
     }
 
+    /**
+     * ESC handler global (Ronda 5).
+     * -----------------------------------------------------
+     * Orden por z-index descendente.
+     *
+     * Los siguientes modales tienen su PROPIO handler en
+     * capture phase con stopImmediatePropagation; NO llegan
+     * aquí (ganan antes de que app.js procese el ESC):
+     *   - ConfirmDialog       (z-modal 500)
+     *   - LegalUI             (z-modal 500)
+     *   - MessagingUI chat    (z-chat 250)
+     *   - Chat edit modal     (dentro de chat)
+     *
+     * Aquí solo procesamos ESC cuando nadie más lo reclamó:
+     */
     function initGlobalEscapeHandler() {
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
 
-            const confirmModal = document.getElementById('confirm-modal');
-            if (confirmModal && !confirmModal.classList.contains('hidden')) {
-                e.preventDefault();
-                return;
-            }
-
-            if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) {
-                e.preventDefault(); MessagingUI.closeChat(); return;
-            }
-            if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) {
-                e.preventDefault(); SellerProfileUI.close(); return;
-            }
-
-            if (window.PublicationUI) {
-                if (PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) {
-                    e.preventDefault(); PublicationUI.closeLightbox(); return;
-                }
-                if (PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) {
-                    e.preventDefault(); PublicationUI.closeProductSheet(); return;
-                }
-                if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) {
-                    e.preventDefault(); PublicationUI.closePreview(); return;
-                }
-                if (PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) {
-                    e.preventDefault(); PublicationUI.closeFilterModal(); return;
-                }
-            }
-
-            if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) {
-                e.preventDefault(); AdminUI.closeConfirm(); return;
-            }
+            // ---------- z-modal 500 (mutuamente excluyentes) ----------
             if (window.AuthUI && AuthUI.isAuthModalOpen && AuthUI.isAuthModalOpen()) {
                 e.preventDefault(); AuthUI.closeAuthModal(); return;
+            }
+            if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) {
+                e.preventDefault(); AdminUI.closeConfirm(); return;
             }
             if (window.ProfileUI && ProfileUI.isSettingsModalOpen && ProfileUI.isSettingsModalOpen()) {
                 e.preventDefault(); ProfileUI.closeSettings(); return;
             }
-            if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) {
-                e.preventDefault(); LegalUI.close(); return;
+            if (window.PublicationUI && PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) {
+                e.preventDefault(); PublicationUI.closePreview(); return;
+            }
+            if (window.PublicationUI && PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) {
+                e.preventDefault(); PublicationUI.closeFilterModal(); return;
+            }
+            if (window.PublicationUI && PublicationUI.isDraftModalOpen && PublicationUI.isDraftModalOpen()) {
+                e.preventDefault(); PublicationUI.closeDraftModal(); return;
+            }
+            if (window.PublicationUI && PublicationUI.isUnsavedModalOpen && PublicationUI.isUnsavedModalOpen()) {
+                e.preventDefault(); PublicationUI.closeUnsaved(); return;
+            }
+            {
+                const sellerModal = document.getElementById('seller-modal');
+                if (sellerModal && !sellerModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    if (window.SellerUI && SellerUI.close) SellerUI.close();
+                    else sellerModal.classList.add('hidden');
+                    return;
+                }
             }
 
-            ['draft-modal', 'seller-modal'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el && !el.classList.contains('hidden')) {
-                    e.preventDefault();
-                    el.classList.add('hidden');
-                }
-            });
+            // ---------- z-lightbox 300 ----------
+            if (window.PublicationUI && PublicationUI.isLightboxOpen && PublicationUI.isLightboxOpen()) {
+                e.preventDefault(); PublicationUI.closeLightbox(); return;
+            }
+
+            // ---------- z-seller-profile 260 ----------
+            if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) {
+                e.preventDefault(); SellerProfileUI.close(); return;
+            }
+
+            // ---------- z-sheet 100 ----------
+            if (window.PublicationUI && PublicationUI.isProductSheetOpen && PublicationUI.isProductSheetOpen()) {
+                e.preventDefault(); PublicationUI.closeProductSheet(); return;
+            }
         });
     }
 
     async function bootstrap() {
+        if (!window.PipGoFirebaseReady) {
+            Logger.error('Bootstrap abortado: Firebase no disponible.');
+            Toast.error('No pudimos iniciar la aplicación. Revisa tu conexión e inténtalo de nuevo.');
+            const splash = document.getElementById('pipgo-splash');
+            if (splash) splash.remove();
+            return;
+        }
+
         try {
             ConnectivityService.init();
 

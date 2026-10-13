@@ -1,13 +1,18 @@
 /* =====================================================
    PIPGO · FAVORITE SERVICE
-   Favoritos por usuario. Lectura en batch (evita N+1).
-   Resiliente a publicaciones eliminadas / no accesibles.
+   -----------------------------------------------------
+   v2.0:
+   - Chunks de "in" ejecutados en paralelo con Promise.all
+     en vez de secuencial (F-09). Con 200 favoritos:
+     7 requests en vez de 7 × round-trip.
+   - Auto-limpieza de huérfanos se mantiene pero se agrupa
+     en un batch para reducir escrituras.
    ===================================================== */
 
 (function () {
     'use strict';
 
-    const IN_CHUNK = 30; // límite de Firestore para "in"
+    const IN_CHUNK = 30;
 
     function favRef(uid) {
         return db.collection(CONFIG.COLLECTIONS.USERS).doc(uid)
@@ -50,34 +55,48 @@
             const batches = chunk(idArray, IN_CHUNK);
             const found = new Map();
 
-            for (const ids2 of batches) {
-                const snap = await db.collection(CONFIG.COLLECTIONS.PUBLICATIONS)
-                    .where(firebase.firestore.FieldPath.documentId(), 'in', ids2)
-                    .get();
+            // F-09: chunks en paralelo.
+            const results = await Promise.all(
+                batches.map(ids2 =>
+                    db.collection(CONFIG.COLLECTIONS.PUBLICATIONS)
+                        .where(firebase.firestore.FieldPath.documentId(), 'in', ids2)
+                        .get()
+                        .catch(err => {
+                            Logger.warn('FavoriteService chunk falló', err);
+                            return null;
+                        })
+                )
+            );
 
+            results.forEach(snap => {
+                if (!snap) return;
                 snap.docs.forEach(doc => {
                     const data = doc.data();
                     if (data.status === 'deleted') return;
                     found.set(doc.id, { id: doc.id, ...data });
                 });
-            }
-
-            // Auto-limpieza silenciosa: favoritos huérfanos (borrados
-            // o inaccesibles por reglas) se eliminan del usuario.
-            idArray.forEach(id => {
-                if (!found.has(id)) {
-                    favRef(uid).doc(id).delete().catch(() => {});
-                }
             });
 
-            // Orden por createdAt desc si está disponible.
-            const results = [...found.values()];
-            results.sort((a, b) => {
+            // Auto-limpieza silenciosa en un solo batch.
+            const orphans = idArray.filter(id => !found.has(id));
+            if (orphans.length) {
+                try {
+                    const batch = db.batch();
+                    orphans.forEach(id => batch.delete(favRef(uid).doc(id)));
+                    await batch.commit();
+                } catch (e) {
+                    // Si falla el cleanup, no rompemos la carga de favoritos.
+                    Logger.warn('FavoriteService: cleanup huérfanos falló', e);
+                }
+            }
+
+            const list = [...found.values()];
+            list.sort((a, b) => {
                 const ta = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : 0;
                 const tb = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : 0;
                 return tb - ta;
             });
-            return results;
+            return list;
         }
     };
 })();

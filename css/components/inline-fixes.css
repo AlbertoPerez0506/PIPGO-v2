@@ -1,0 +1,115 @@
+/* =====================================================
+   PIPGO · INLINE FIXES
+   -----------------------------------------------------
+   Estilos que estaban inline en <head> y se movieron
+   aquí para poder endurecer el CSP del proyecto.
+   -----------------------------------------------------
+   1) Fix del delay de 300ms y doble-tap-to-zoom en
+      navegadores móviles (fix del doble click en chats).
+   2) Modal de edición de mensaje (reemplaza window.prompt).
+      Como vive dentro de .chat-overlay (z-chat 250), su
+      z-index solo compite dentro de ese stacking context.
+   ===================================================== */
+
+/* ---------- 1) touch-action / tap-highlight ---------- */
+.msg-row,
+.chat-back,
+.chat-seller-info,
+.product-favorite,
+.profile-tab,
+.home-filter-chip,
+.category-pill,
+.suggestion-chip,
+.filter-chip,
+.nav-item,
+.icon-btn,
+.admin-tab,
+.admin-filter-chip,
+.msg-row-cta {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- 2) Modal de edición de mensaje ---------- */
+.chat-edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: var(--z-edit-modal, 700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.chat-edit-modal.hidden { display: none; }
+
+.chat-edit-box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-edit-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.chat-edit-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
+    outline: none;
+    transition: border-color 0.15s;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.chat-edit-input:focus {
+    border-color: var(--primary, #2e7d32);
+}
+
+.chat-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.chat-edit-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    background: #f2f2f2;
+    color: var(--text-primary, #1a1a1a);
+    transition: opacity 0.15s;
+}
+
+.chat-edit-btn:active { opacity: 0.7; }
+
+.chat-edit-btn.primary {
+    background: var(--primary, #2e7d32);
+    color: #fff;
+}
+
+.chat-edit-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

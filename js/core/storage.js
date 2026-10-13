@@ -1,10 +1,11 @@
 /* =====================================================
    PIPGO · STORAGE SERVICE
-   Envoltorio sobre localStorage. Centraliza lectura/escritura
-   y evita acceso directo desde features.
+   v2.0: remove() con try/catch (F-23).
    ===================================================== */
 
 (function () {
+    'use strict';
+
     const PREFIX = 'pipgo.';
 
     window.Storage = {
@@ -30,7 +31,11 @@
         },
 
         remove(key) {
-            try { localStorage.removeItem(PREFIX + key); } catch (e) {}
+            try {
+                localStorage.removeItem(PREFIX + key);
+            } catch (e) {
+                Logger.warn('Storage.remove falló', key, e);
+            }
         }
     };
 })();

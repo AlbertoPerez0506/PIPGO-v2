@@ -1,10 +1,14 @@
 /* =====================================================
    PIPGO · FIREBASE CONFIG
-   Proyecto: pipgo-1b3ba
    -----------------------------------------------------
-   Compat SDK (CDN) — no modular.
-   Compatible con firebase-app-compat.js,
-   firebase-auth-compat.js y firebase-firestore-compat.js.
+   v2.0:
+   - initializeApp envuelto en try/catch (F-07).
+     Si Firebase falla (CDN caído, bloqueo de red), se
+     levanta un flag y bootstrap() aborta con mensaje claro
+     en vez de explotar con "firebase is not defined".
+   - La apiKey de Firebase es PÚBLICA por diseño. La
+     seguridad real vive en Firestore Rules (ver
+     firestore.rules) — F-26.
    ===================================================== */
 
 const firebaseConfig = {
@@ -16,7 +20,18 @@ const firebaseConfig = {
     appId: "1:516598037905:web:b70786f2270eb622822e30"
 };
 
-firebase.initializeApp(firebaseConfig);
+window.PipGoFirebaseReady = false;
 
-window.db = firebase.firestore();
-window.auth = firebase.auth();
+try {
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+        throw new Error('Firebase SDK no disponible.');
+    }
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+    window.auth = firebase.auth();
+    window.PipGoFirebaseReady = true;
+} catch (err) {
+    // No usamos Logger todavía: puede no haberse cargado.
+    console.error('[PipGo] Firebase init falló:', err);
+    window.PipGoFirebaseReady = false;
+}

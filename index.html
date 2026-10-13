@@ -2,29 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="format-detection" content="telephone=no">
-    <meta name="theme-color" content="#F2F2F2">
+   <meta name="theme-color" content="#F2911B">
+
+<!-- PWA instalable en iOS / Android -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PipGo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/assets/android/icon_x192.png">
+<link rel="icon" href="/assets/android/icon_x128.png" type="image/png">
+
     <title>PipGo</title>
+    <!--
+      CSP: refuerza la seguridad en navegador.
+      NOTA: en Cordova (protocolo file:// o https://localhost)
+      algunos webviews ignoran este meta. Si rompe algo en
+      dispositivo, muévelo al config.xml o elimínalo.
+    -->
+   <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' https://www.gstatic.com;
+               style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+               font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+               img-src 'self' data: blob: https:;
+               connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://api.cloudinary.com https://res.cloudinary.com https://nominatim.openstreetmap.org https://maps.googleapis.com https://www.google.com;
+               frame-src 'self' https://*.firebaseapp.com;
+               media-src 'self' blob:;
+               object-src 'none';
+               base-uri 'self';
+               form-action 'self';
+               manifest-src 'self';">
     <link rel="icon" href="/assets/android/icon.png" type="image/png">
+    <link rel="preload" as="image" href="/assets/android/splash.webp" type="image/webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-    <script>
-      (function() {
-        var isCordova = window.location.protocol === 'file:' ||
-                         window.cordova !== undefined ||
-                         window.Capacitor !== undefined;
-        if (isCordova) {
-          var s = document.createElement('script');
-          s.src = 'cordova.js';
-          s.async = false;
-          document.head.appendChild(s);
-        }
-      })();
-    </script>
+
 
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
@@ -32,11 +51,117 @@
 
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pages/legal.css">
+
+    <!-- Fix UX: touch-action y modal de edición de mensajes -->
+        <style>
+        /* Elimina el delay de 300 ms y el doble-tap-to-zoom
+           en navegadores móviles (fix del doble click en chats). */
+        .msg-row,
+        .chat-back,
+        .chat-seller-info,
+        .product-favorite,
+        .profile-tab,
+        .home-filter-chip,
+        .category-pill,
+        .suggestion-chip,
+        .filter-chip,
+        .nav-item,
+        .icon-btn,
+        .admin-tab,
+        .admin-filter-chip,
+        .msg-row-cta {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Modal de edición de mensaje.
+           z-index: --z-edit-modal (700) está por encima de
+           --z-chat (250) del contenedor padre, así que se
+           renderiza encima del chat overlay. Como el padre
+           (chat-overlay) crea su propio stacking context,
+           este z solo compite dentro del chat, no contra
+           modales a nivel documento como --z-modal (500). */
+        .chat-edit-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: var(--z-edit-modal, 700);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .chat-edit-modal.hidden { display: none; }
+        .chat-edit-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chat-edit-title {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary, #1a1a1a);
+        }
+        .chat-edit-input {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            max-height: 200px;
+            outline: none;
+            transition: border-color 0.15s;
+            color: var(--text-primary, #1a1a1a);
+        }
+        .chat-edit-input:focus {
+            border-color: var(--primary, #2e7d32);
+        }
+        .chat-edit-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .chat-edit-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            background: #f2f2f2;
+            color: var(--text-primary, #1a1a1a);
+            transition: opacity 0.15s;
+        }
+        .chat-edit-btn:active { opacity: 0.7; }
+        .chat-edit-btn.primary {
+            background: var(--primary, #2e7d32);
+            color: #fff;
+        }
+        .chat-edit-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 
 <div id="pipgo-splash">
-    <img src="/assets/android/Splahs.jpg" alt="PipGo">
+    <picture>
+        <source srcset="/assets/android/splash.webp" type="image/webp">
+        <img src="/assets/android/Splahs.jpg" alt="" aria-hidden="true">
+    </picture>
 </div>
 
 <div id="app">
@@ -55,13 +180,13 @@
                             <div class="brand-text">
                                 <h1><span class="brand-pip">Pip</span><span class="brand-go">Go</span></h1>
                                 <button class="location-chip" id="location-chip" type="button">
-                                    <i class="fa-solid fa-location-dot"></i>
+                                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
                                     <span id="location-text">Detectando…</span>
                                 </button>
                             </div>
                         </div>
-                        <button class="icon-btn" id="home-search-btn" aria-label="Buscar">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                        <button class="icon-btn" id="home-search-btn" aria-label="Buscar" type="button">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                         </button>
                     </div>
 
@@ -71,21 +196,21 @@
                     </div>
 
                     <button class="home-search-trigger" id="home-search-trigger" type="button" aria-label="Abrir buscador">
-                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                         <span>Buscar frutas, verduras…</span>
                     </button>
 
-                    <div class="home-filter-chips" id="home-filter-chips" role="tablist" aria-label="Filtrar por categoría"></div>
+                    <div class="home-filter-chips" id="home-filter-chips" role="radiogroup" aria-label="Filtrar por categoría"></div>
 
                     <button id="home-new-banner" class="home-new-banner hidden" type="button" aria-live="polite">
-                        <i class="fa-solid fa-arrow-up"></i>
+                        <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
                         <span id="home-new-banner-text">1 nueva publicación</span>
                     </button>
                 </header>
 
                 <div class="section-header">
                     <h3>Descubre lo que hay cerca de ti</h3>
-                    <button class="text-link" id="btn-ver-todos">Ver todos <i class="fa-solid fa-arrow-right"></i></button>
+                    <button class="text-link" id="btn-ver-todos" type="button">Ver todos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
                 <div id="products-grid" class="products-grid"></div>
             </section>
@@ -98,16 +223,16 @@
                             <h2>Explorar</h2>
                             <p class="search-subtitle" id="search-subtitle">Descubre productos cerca de ti</p>
                         </div>
-                        <button class="icon-btn" id="btn-search-filters" aria-label="Filtros">
-                            <i class="fa-solid fa-sliders"></i>
+                        <button class="icon-btn" id="btn-search-filters" aria-label="Filtros" type="button">
+                            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
                             <span class="icon-badge-dot hidden" id="filter-badge"></span>
                         </button>
                     </div>
                     <div class="search-bar-pro">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="search-input" placeholder="Productos, tiendas, categorías…" autocomplete="off">
-                        <button class="clear-search" id="clear-search" aria-label="Limpiar">
-                            <i class="fa-solid fa-xmark"></i>
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input type="text" id="search-input" placeholder="Productos, tiendas, categorías…" autocomplete="off" aria-label="Buscar productos">
+                        <button class="clear-search" id="clear-search" aria-label="Limpiar búsqueda" type="button">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="filter-chip-row" id="filter-chip-row"></div>
@@ -116,14 +241,13 @@
                 <div class="category-scroll" id="search-category-scroll"></div>
 
                 <div class="search-suggestions" id="search-suggestions">
-                    <span class="suggestion-label"><i class="fa-solid fa-fire"></i> Tendencias</span>
+                    <span class="suggestion-label"><i class="fa-solid fa-fire" aria-hidden="true"></i> Tendencias</span>
                     <div class="suggestion-chips" id="suggestion-chips"></div>
                 </div>
 
-                
                 <div id="search-sellers-section" class="search-sellers-section hidden">
                     <h3 class="search-section-title">
-                        <i class="fa-solid fa-store"></i> Vendedores
+                        <i class="fa-solid fa-store" aria-hidden="true"></i> Vendedores
                     </h3>
                     <div id="search-sellers-results" class="search-sellers-list"></div>
                 </div>
@@ -138,11 +262,12 @@
                         <h2>Mensajes</h2>
                     </div>
                     <div class="search-bar-pro">
-                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                         <input type="text" id="messaging-search-input"
-                               placeholder="Buscar vendedores seguidos…" autocomplete="off">
-                        <button class="clear-search" id="messaging-clear-search" aria-label="Limpiar">
-                            <i class="fa-solid fa-xmark"></i>
+                               placeholder="Buscar vendedores seguidos…" autocomplete="off"
+                               aria-label="Buscar vendedores seguidos">
+                        <button class="clear-search" id="messaging-clear-search" aria-label="Limpiar búsqueda" type="button">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
                 </header>
@@ -156,10 +281,10 @@
                 </header>
 
                 <div id="login-required" class="login-required">
-                    <i class="fa-solid fa-user-lock"></i>
+                    <i class="fa-solid fa-user-lock" aria-hidden="true"></i>
                     <h3>Necesitas iniciar sesión</h3>
                     <p>Para publicar un anuncio debes estar autenticado.</p>
-                    <button class="btn-primary" id="btn-go-auth">Iniciar sesión</button>
+                    <button class="btn-primary" id="btn-go-auth" type="button">Iniciar sesión</button>
                 </div>
 
                <div class="form-wrapper hidden" id="form-wrapper">
@@ -168,7 +293,7 @@
     <div class="form-step" id="step-type">
         <div class="step-hero">
             <span class="step-hero-eyebrow">
-                <i class="fa-solid fa-bullhorn"></i> Nueva publicación
+                <i class="fa-solid fa-bullhorn" aria-hidden="true"></i> Nueva publicación
             </span>
             <h3 class="step-title">¿Cómo vas a vender?</h3>
             <p class="step-subtitle">Elige el tipo de vendedor que mejor describe tu negocio</p>
@@ -178,37 +303,37 @@
             <button type="button" class="seller-card-pro seller-card-ambulante" id="type-calle" data-type="calle">
                 <div class="seller-card-pro-badge">Más común</div>
                 <div class="seller-card-pro-icon">
-                    <i class="fa-solid fa-store"></i>
+                    <i class="fa-solid fa-store" aria-hidden="true"></i>
                 </div>
                 <div class="seller-card-pro-body">
                     <h4 class="seller-card-pro-name">Puesto Ambulante</h4>
                     <p class="seller-card-pro-desc">Vendes en tianguis, ferias, esquinas o de casa en casa</p>
                     <ul class="seller-card-pro-features">
-                        <li><i class="fa-solid fa-check"></i> Sin ubicación fija</li>
-                        <li><i class="fa-solid fa-check"></i> Productos del día</li>
-                        <li><i class="fa-solid fa-check"></i> Ideal para comenzar</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Sin ubicación fija</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Productos del día</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Ideal para comenzar</li>
                     </ul>
                 </div>
                 <div class="seller-card-pro-arrow">
-                    <i class="fa-solid fa-arrow-right"></i>
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                 </div>
             </button>
 
             <button type="button" class="seller-card-pro seller-card-local" id="type-establecimiento" data-type="establecimiento">
                 <div class="seller-card-pro-icon">
-                    <i class="fa-solid fa-shop"></i>
+                    <i class="fa-solid fa-shop" aria-hidden="true"></i>
                 </div>
                 <div class="seller-card-pro-body">
                     <h4 class="seller-card-pro-name">Local Establecido</h4>
                     <p class="seller-card-pro-desc">Tienes un lugar fijo donde tus clientes te encuentran</p>
                     <ul class="seller-card-pro-features">
-                        <li><i class="fa-solid fa-check"></i> Ubicación permanente</li>
-                        <li><i class="fa-solid fa-check"></i> Horario definido</li>
-                        <li><i class="fa-solid fa-check"></i> Mayor confianza</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Ubicación permanente</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Horario definido</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Mayor confianza</li>
                     </ul>
                 </div>
                 <div class="seller-card-pro-arrow">
-                    <i class="fa-solid fa-arrow-right"></i>
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                 </div>
             </button>
         </div>
@@ -217,14 +342,14 @@
     <!-- PASO 2: FORMULARIO -->
     <form id="publication-form" class="publication-form hidden">
         <button type="button" class="btn-back" id="btn-back-type">
-            <i class="fa-solid fa-arrow-left"></i> Volver
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Volver
         </button>
 
         <!-- Sección: Fotos -->
         <div class="form-section">
             <div class="form-section-header">
                 <div class="form-section-icon form-section-icon-photos">
-                    <i class="fa-solid fa-camera"></i>
+                    <i class="fa-solid fa-camera" aria-hidden="true"></i>
                 </div>
                 <div>
                     <h4>Fotos del producto</h4>
@@ -233,40 +358,40 @@
             </div>
 
             <div class="photo-gallery" id="photo-gallery">
-                <div class="photo-slot main-slot" id="photo-slot-main">
-                    <i class="fa-solid fa-camera"></i>
+                <div class="photo-slot main-slot" id="photo-slot-main" role="button" tabindex="0" aria-label="Foto principal del producto">
+                    <i class="fa-solid fa-camera" aria-hidden="true"></i>
                     <span>Foto principal</span>
                     <input type="file" id="photo-input-main" accept="image/*" hidden>
                     <img id="photo-preview-main" class="photo-preview hidden" alt="Foto principal">
-                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-main"><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-main" aria-label="Quitar foto principal"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
-                <div class="photo-slot secondary-slot" id="photo-slot-2">
-                    <i class="fa-solid fa-plus"></i>
+                <div class="photo-slot secondary-slot" id="photo-slot-2" role="button" tabindex="0" aria-label="Foto 2 del producto">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     <span>Foto 2</span>
                     <input type="file" id="photo-input-2" accept="image/*" hidden>
                     <img id="photo-preview-2" class="photo-preview hidden" alt="Foto 2">
-                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-2"><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-2" aria-label="Quitar foto 2"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
-                <div class="photo-slot secondary-slot" id="photo-slot-3">
-                    <i class="fa-solid fa-plus"></i>
+                <div class="photo-slot secondary-slot" id="photo-slot-3" role="button" tabindex="0" aria-label="Foto 3 del producto">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     <span>Foto 3</span>
                     <input type="file" id="photo-input-3" accept="image/*" hidden>
                     <img id="photo-preview-3" class="photo-preview hidden" alt="Foto 3">
-                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-3"><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-3" aria-label="Quitar foto 3"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
-                <div class="photo-slot secondary-slot" id="photo-slot-4">
-                    <i class="fa-solid fa-plus"></i>
+                <div class="photo-slot secondary-slot" id="photo-slot-4" role="button" tabindex="0" aria-label="Foto 4 del producto">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     <span>Foto 4</span>
                     <input type="file" id="photo-input-4" accept="image/*" hidden>
                     <img id="photo-preview-4" class="photo-preview hidden" alt="Foto 4">
-                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-4"><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-4" aria-label="Quitar foto 4"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
-                <div class="photo-slot secondary-slot" id="photo-slot-5">
-                    <i class="fa-solid fa-plus"></i>
+                <div class="photo-slot secondary-slot" id="photo-slot-5" role="button" tabindex="0" aria-label="Foto 5 del producto">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     <span>Foto 5</span>
                     <input type="file" id="photo-input-5" accept="image/*" hidden>
                     <img id="photo-preview-5" class="photo-preview hidden" alt="Foto 5">
-                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-5"><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" class="btn-remove-photo hidden" data-preview="photo-preview-5" aria-label="Quitar foto 5"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
             </div>
         </div>
@@ -275,7 +400,7 @@
         <div class="form-section">
             <div class="form-section-header">
                 <div class="form-section-icon form-section-icon-product">
-                    <i class="fa-solid fa-box-open"></i>
+                    <i class="fa-solid fa-box-open" aria-hidden="true"></i>
                 </div>
                 <div>
                     <h4>Datos del producto</h4>
@@ -286,7 +411,7 @@
             <div class="input-group">
                 <label for="product-category">Categoría</label>
                 <div class="select-pro-wrap">
-                    <i class="fa-solid fa-tag select-pro-icon"></i>
+                    <i class="fa-solid fa-tag select-pro-icon" aria-hidden="true"></i>
                     <select id="product-category" required>
                         <option value="" disabled selected>Selecciona una categoría</option>
                         <option value="Frutas">Frutas</option>
@@ -311,7 +436,7 @@
                         <option value="Servicios">Servicios</option>
                         <option value="Otros">Otros</option>
                     </select>
-                    <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                    <i class="fa-solid fa-chevron-down select-pro-arrow" aria-hidden="true"></i>
                 </div>
             </div>
 
@@ -336,9 +461,9 @@
             <div class="input-group hidden" id="unit-group">
                 <label for="product-unit">Unidad de venta</label>
                 <div class="select-pro-wrap">
-                    <i class="fa-solid fa-scale-balanced select-pro-icon"></i>
+                    <i class="fa-solid fa-scale-balanced select-pro-icon" aria-hidden="true"></i>
                     <select id="product-unit"></select>
-                    <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                    <i class="fa-solid fa-chevron-down select-pro-arrow" aria-hidden="true"></i>
                 </div>
                 <p class="form-hint" id="unit-hint">Se mostrará como "$0 / unidad".</p>
             </div>
@@ -346,8 +471,8 @@
             <div class="input-group hidden" id="presentation-group">
                 <label>Presentación <span class="optional-tag">Opcional</span></label>
                 <div class="presentation-row">
-                    <input type="tel" id="product-presentation-qty" placeholder="Cantidad" inputmode="decimal" maxlength="8">
-                    <select id="product-presentation-unit"></select>
+                    <input type="tel" id="product-presentation-qty" placeholder="Cantidad" inputmode="decimal" maxlength="8" aria-label="Cantidad de la presentación">
+                    <select id="product-presentation-unit" aria-label="Unidad de la presentación"></select>
                 </div>
                 <p class="form-hint">Cantidad con la que se vende, por ejemplo: 500 g, 1 kg, 12 piezas.</p>
             </div>
@@ -362,7 +487,7 @@
         <div class="form-section">
             <div class="form-section-header">
                 <div class="form-section-icon form-section-icon-desc">
-                    <i class="fa-solid fa-pen"></i>
+                    <i class="fa-solid fa-pen" aria-hidden="true"></i>
                 </div>
                 <div>
                     <h4>Descripción</h4>
@@ -386,7 +511,7 @@
         <div class="form-section">
             <div class="form-section-header">
                 <div class="form-section-icon form-section-icon-contact">
-                    <i class="fa-solid fa-phone"></i>
+                    <i class="fa-solid fa-phone" aria-hidden="true"></i>
                 </div>
                 <div>
                     <h4>Contacto</h4>
@@ -397,7 +522,7 @@
             <div class="input-group">
                 <label for="product-phone">Teléfono de contacto <span class="optional-tag">Opcional</span></label>
                 <div class="input-prefix-wrap">
-                    <span class="input-prefix"><i class="fa-solid fa-phone"></i></span>
+                    <span class="input-prefix"><i class="fa-solid fa-phone" aria-hidden="true"></i></span>
                     <input type="tel" id="product-phone" placeholder="961 123 4567" inputmode="tel" maxlength="20">
                 </div>
                 <label class="form-checkbox" for="product-has-whatsapp">
@@ -414,7 +539,7 @@
         <div class="form-section">
             <div class="form-section-header">
                 <div class="form-section-icon form-section-icon-location">
-                    <i class="fa-solid fa-location-dot"></i>
+                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
                 </div>
                 <div>
                     <h4>Ubicación y horario</h4>
@@ -426,16 +551,16 @@
                 <label for="product-ref">Referencia del lugar</label>
                 <input type="text" id="product-ref" placeholder="Calle, colonia, referencias del punto…" required maxlength="120">
                 <button type="button" class="btn-location" id="btn-get-location">
-                    <i class="fa-solid fa-location-crosshairs"></i> Usar mi ubicación
+                    <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Usar mi ubicación
                 </button>
             </div>
 
             <div class="input-group schedule-group">
                 <label>Horario <span class="optional-tag">Opcional</span></label>
                 <button type="button" class="schedule-toggle" id="schedule-toggle" aria-expanded="false">
-                    <i class="fa-regular fa-clock"></i>
+                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
                     <span id="schedule-toggle-text">Agregar horario</span>
-                    <i class="fa-solid fa-chevron-down schedule-chevron"></i>
+                    <i class="fa-solid fa-chevron-down schedule-chevron" aria-hidden="true"></i>
                 </button>
                 <div class="schedule-panel hidden" id="schedule-panel">
                     <div class="schedule-days" id="schedule-days" role="group" aria-label="Días del horario">
@@ -459,20 +584,20 @@
                     </div>
                     <p class="form-hint">Puedes usar cualquier hora, mañana o tarde. Ej. 14:00 a 17:00.</p>
                     <button type="button" class="btn-clear-schedule hidden" id="btn-clear-schedule">
-                        <i class="fa-solid fa-trash"></i> Quitar horario
+                        <i class="fa-solid fa-trash" aria-hidden="true"></i> Quitar horario
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="form-error" class="form-error hidden"></div>
+        <div id="form-error" class="form-error hidden" role="alert"></div>
 
         <div class="form-actions-sticky">
             <button type="button" class="btn-outline btn-preview" id="btn-preview">
-                <i class="fa-solid fa-eye"></i> Vista previa
+                <i class="fa-solid fa-eye" aria-hidden="true"></i> Vista previa
             </button>
             <button type="submit" class="btn-primary btn-submit" id="btn-submit">
-                <i class="fa-solid fa-paper-plane"></i> <span id="btn-submit-text">Publicar anuncio</span>
+                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span id="btn-submit-text">Publicar anuncio</span>
             </button>
         </div>
     </form>
@@ -487,8 +612,8 @@
             <!-- ============ VISTA: ADMIN ============ -->
             <section id="view-admin" class="view">
                 <header class="admin-header">
-                    <button class="admin-back" id="admin-back" aria-label="Volver">
-                        <i class="fa-solid fa-arrow-left"></i>
+                    <button class="admin-back" id="admin-back" aria-label="Volver" type="button">
+                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                     </button>
                     <div class="admin-header-text">
                         <h2>Panel Admin</h2>
@@ -496,18 +621,18 @@
                     </div>
                 </header>
 
-                <div class="admin-tabs" role="tablist">
-                    <button class="admin-tab active" data-admin-tab="dashboard" type="button">Dashboard</button>
-                    <button class="admin-tab" data-admin-tab="applications" type="button">Solicitudes</button>
-                    <button class="admin-tab" data-admin-tab="recoveries" type="button">Recuperaciones</button>
-                    <button class="admin-tab" data-admin-tab="users" type="button">Usuarios</button>
+                <div class="admin-tabs" role="tablist" aria-label="Secciones del panel">
+                    <button class="admin-tab active" data-admin-tab="dashboard" type="button" role="tab" aria-selected="true">Dashboard</button>
+                    <button class="admin-tab" data-admin-tab="applications" type="button" role="tab" aria-selected="false">Solicitudes</button>
+                    <button class="admin-tab" data-admin-tab="recoveries" type="button" role="tab" aria-selected="false">Recuperaciones</button>
+                    <button class="admin-tab" data-admin-tab="users" type="button" role="tab" aria-selected="false">Usuarios</button>
                 </div>
 
                 <div class="admin-panels">
-                    <div class="admin-panel active" id="admin-panel-dashboard"></div>
-                    <div class="admin-panel" id="admin-panel-applications"></div>
-                    <div class="admin-panel" id="admin-panel-recoveries"></div>
-                    <div class="admin-panel" id="admin-panel-users"></div>
+                    <div class="admin-panel active" id="admin-panel-dashboard" role="tabpanel"></div>
+                    <div class="admin-panel" id="admin-panel-applications" role="tabpanel"></div>
+                    <div class="admin-panel" id="admin-panel-recoveries" role="tabpanel"></div>
+                    <div class="admin-panel" id="admin-panel-users" role="tabpanel"></div>
                 </div>
             </section>
 
@@ -515,21 +640,21 @@
 
         <!-- ============ SHEET DE PRODUCTO ============ -->
         <div id="sheet-backdrop" class="sheet-backdrop">
-            <div id="product-sheet" class="product-sheet">
+            <div id="product-sheet" class="product-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name">
                 <div class="sheet-drag-zone" id="sheet-drag-zone"><div class="sheet-handle"></div></div>
                 <div class="gallery-container" id="gallery-container">
                     <div class="gallery-track" id="gallery-track"></div>
-                    <button class="gallery-arrow gallery-arrow-prev" id="gallery-prev" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
-                    <button class="gallery-arrow gallery-arrow-next" id="gallery-next" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>
-                    <button class="gallery-close" id="gallery-close" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="gallery-arrow gallery-arrow-prev" id="gallery-prev" aria-label="Foto anterior" type="button"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+                    <button class="gallery-arrow gallery-arrow-next" id="gallery-next" aria-label="Foto siguiente" type="button"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+                    <button class="gallery-close" id="gallery-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     <div class="gallery-dots" id="gallery-dots"></div>
-                    <span class="gallery-hint"><i class="fa-solid fa-expand"></i> Toca para ampliar</span>
+                    <span class="gallery-hint"><i class="fa-solid fa-expand" aria-hidden="true"></i> Toca para ampliar</span>
                 </div>
                 <div class="sheet-content" id="sheet-content">
                     <div class="sheet-category-badge" id="sheet-category"></div>
                     <h2 id="sheet-name" class="sheet-title"></h2>
 
-                    <!-- Identidad pública del vendedor -->                    <div class="sheet-seller-block" id="sheet-seller-block" role="button" tabindex="0">
+                    <div class="sheet-seller-block" id="sheet-seller-block" role="button" tabindex="0" aria-label="Ver perfil del vendedor">
                         <div class="sheet-seller-avatar" id="sheet-seller-avatar"></div>
                         <div class="sheet-seller-text" id="sheet-seller-open">
                             <span class="sheet-seller-username" id="sheet-seller-username">@usuario</span>
@@ -537,9 +662,9 @@
                         </div>
                         <button class="sheet-seller-follow-btn hidden" id="sheet-seller-follow-btn"
                                 type="button" aria-label="Seguir vendedor">
-                            <i class="fa-regular fa-heart"></i>
+                            <i class="fa-regular fa-heart" aria-hidden="true"></i>
                         </button>
-                        <i class="fa-solid fa-chevron-right sheet-seller-arrow"></i>
+                        <i class="fa-solid fa-chevron-right sheet-seller-arrow" aria-hidden="true"></i>
                     </div>
 
                     <div class="sheet-badges-row hidden" id="sheet-badges-row"></div>
@@ -551,12 +676,12 @@
                     <p id="sheet-desc" class="sheet-description"></p>
 
                     <div class="sheet-refs-block" id="sheet-refs-block">
-                        <div class="refs-header"><i class="fa-solid fa-circle-info"></i> Referencias</div>
+                        <div class="refs-header"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Referencias</div>
                         <p id="sheet-refs"></p>
                     </div>
 
                     <div class="sheet-schedule-block hidden" id="sheet-schedule-block">
-                        <div class="sheet-schedule-icon"><i class="fa-regular fa-clock"></i></div>
+                        <div class="sheet-schedule-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></div>
                         <div class="sheet-schedule-info">
                             <span>Horario</span>
                             <strong id="sheet-schedule-text"></strong>
@@ -564,46 +689,46 @@
                     </div>
 
                     <div class="sheet-location-card">
-                        <div class="location-icon"><i class="fa-solid fa-location-dot"></i></div>
+                        <div class="location-icon"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></div>
                         <div class="location-info">
                             <span>Ubicación de referencia</span>
                             <strong id="sheet-ref"></strong>
                         </div>
-                        <button class="map-link" id="sheet-map-link"><i class="fa-solid fa-diamond-turn-right"></i> Llegar</button>
+                        <button class="map-link" id="sheet-map-link" type="button"><i class="fa-solid fa-diamond-turn-right" aria-hidden="true"></i> Llegar</button>
                     </div>
 
                     <div class="sheet-contact-row hidden" id="sheet-contact-row">
                         <div class="contact-info">
-                            <i class="fa-solid fa-phone"></i>
+                            <i class="fa-solid fa-phone" aria-hidden="true"></i>
                             <span id="sheet-phone"></span>
                         </div>
                         <div class="sheet-contact-actions">
-                            <a class="btn-outline btn-call" id="sheet-call" href="#"><i class="fa-solid fa-phone"></i> Llamar</a>
+                            <a class="btn-outline btn-call" id="sheet-call" href="#"><i class="fa-solid fa-phone" aria-hidden="true"></i> Llamar</a>
                             <button class="btn-outline btn-whatsapp hidden" id="sheet-whatsapp" type="button">
-                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp
                             </button>
                         </div>
                     </div>
 
                     <div class="sheet-actions">
-                        <button class="btn-primary btn-large" id="btn-directions">
-                            <i class="fa-solid fa-diamond-turn-right"></i> Cómo llegar
+                        <button class="btn-primary btn-large" id="btn-directions" type="button">
+                            <i class="fa-solid fa-diamond-turn-right" aria-hidden="true"></i> Cómo llegar
                         </button>
-                        <button class="btn-outline btn-icon-only" id="btn-favorite" aria-label="Guardar">
-                            <i class="fa-regular fa-bookmark"></i>
+                        <button class="btn-outline btn-icon-only" id="btn-favorite" aria-label="Guardar en favoritos" type="button">
+                            <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
                         </button>
                     </div>
 
-                    <button class="btn-chat-v2 active" id="btn-chat-v2">
-                        <i class="fa-solid fa-comment-dots"></i> Mensaje
+                    <button class="btn-chat-v2 active" id="btn-chat-v2" type="button">
+                        <i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Mensaje
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- ============ LIGHTBOX FULLSCREEN ============ -->
-        <div id="lightbox" class="lightbox hidden">
-            <button class="lightbox-close" id="lightbox-close"><i class="fa-solid fa-xmark"></i></button>
+        <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Imagen ampliada">
+            <button class="lightbox-close" id="lightbox-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             <div class="lightbox-counter" id="lightbox-counter">1 / 1</div>
             <div class="lightbox-track" id="lightbox-track"></div>
             <div class="lightbox-dots" id="lightbox-dots"></div>
@@ -611,17 +736,17 @@
 
         <!-- ============ SELLER PROFILE SHEET ============ -->
         <div id="seller-profile-backdrop" class="sheet-backdrop">
-            <div id="seller-profile-sheet" class="product-sheet seller-profile-sheet">
+            <div id="seller-profile-sheet" class="product-sheet seller-profile-sheet" role="dialog" aria-modal="true" aria-label="Perfil del vendedor">
                 <div class="sheet-drag-zone"><div class="sheet-handle"></div></div>
                 <div id="seller-profile-content"></div>
             </div>
         </div>
 
         <!-- ============ CHAT OVERLAY ============ -->
-        <div id="chat-overlay" class="chat-overlay hidden">
+        <div id="chat-overlay" class="chat-overlay hidden" role="dialog" aria-modal="true" aria-label="Conversación">
             <header class="chat-header" id="chat-header">
-                <button class="chat-back" id="chat-back" aria-label="Volver">
-                    <i class="fa-solid fa-arrow-left"></i>
+                <button class="chat-back" id="chat-back" aria-label="Volver" type="button">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 </button>
                 <button class="chat-seller-info" id="chat-seller-info" type="button">
                     <div class="chat-avatar" id="chat-avatar"></div>
@@ -633,7 +758,7 @@
             </header>
 
             <div class="chat-context-banner hidden" id="chat-context-banner">
-                <i class="fa-solid fa-tag"></i>
+                <i class="fa-solid fa-tag" aria-hidden="true"></i>
                 <span>Sobre esta publicación:</span>
                 <strong id="chat-context-name">—</strong>
                 <button id="chat-context-open" type="button">Ver</button>
@@ -642,41 +767,53 @@
             <div class="chat-messages" id="chat-messages"></div>
 
             <button class="chat-new-messages hidden" id="chat-new-messages" type="button">
-                <i class="fa-solid fa-arrow-down"></i>
+                <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
                 <span id="chat-new-messages-text">1 mensaje nuevo</span>
             </button>
 
             <div class="chat-composer">
-                <textarea id="chat-input" placeholder="Escribe un mensaje…" rows="1" maxlength="2000"></textarea>
-                <button id="chat-send" aria-label="Enviar">
-                    <i class="fa-solid fa-paper-plane"></i>
+                <textarea id="chat-input" placeholder="Escribe un mensaje…" rows="1" maxlength="2000" aria-label="Escribe un mensaje"></textarea>
+                <button id="chat-send" aria-label="Enviar mensaje" type="button">
+                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
                 </button>
             </div>
 
             <div class="chat-message-menu hidden" id="chat-message-menu"></div>
+
+            <!-- Modal de edición de mensaje (reemplaza window.prompt) -->
+            <div class="chat-edit-modal hidden" id="chat-edit-modal" role="dialog" aria-modal="true" aria-labelledby="chat-edit-title">
+                <div class="chat-edit-box">
+                    <h3 class="chat-edit-title" id="chat-edit-title">Editar mensaje</h3>
+                    <textarea id="chat-edit-input" class="chat-edit-input" rows="3" maxlength="2000" aria-label="Contenido del mensaje"></textarea>
+                    <div class="chat-edit-actions">
+                        <button id="chat-edit-cancel" class="chat-edit-btn" type="button">Cancelar</button>
+                        <button id="chat-edit-save" class="chat-edit-btn primary" type="button">Guardar</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ============ MODAL AUTH ============ -->
         <div id="auth-modal" class="modal-backdrop hidden">
-            <div class="auth-modal-pro">
+            <div class="auth-modal-pro" role="dialog" aria-modal="true" aria-labelledby="auth-hero-title">
 
                 <div class="auth-hero">
-                    <button class="auth-close" id="auth-close" aria-label="Cerrar">
-                        <i class="fa-solid fa-xmark"></i>
+                    <button class="auth-close" id="auth-close" aria-label="Cerrar" type="button">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                     <div class="auth-hero-icon" id="auth-hero-icon">
-                        <i class="fa-solid fa-store"></i>
+                        <i class="fa-solid fa-store" aria-hidden="true"></i>
                     </div>
                     <h3 class="auth-hero-title" id="auth-hero-title">Bienvenido a PipGo</h3>
                     <p class="auth-hero-subtitle" id="auth-hero-subtitle">Compra y vende cerca de ti</p>
                 </div>
 
-                <div class="auth-tabs-pro" id="auth-tabs-pro">
-                    <button class="auth-tab-pro active" data-auth="login" type="button">
-                        <i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión
+                <div class="auth-tabs-pro" id="auth-tabs-pro" role="tablist" aria-label="Modo de acceso">
+                    <button class="auth-tab-pro active" data-auth="login" type="button" role="tab" aria-selected="true">
+                        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
                     </button>
-                    <button class="auth-tab-pro" data-auth="register" type="button">
-                        <i class="fa-solid fa-user-plus"></i> Crear cuenta
+                    <button class="auth-tab-pro" data-auth="register" type="button" role="tab" aria-selected="false">
+                        <i class="fa-solid fa-user-plus" aria-hidden="true"></i> Crear cuenta
                     </button>
                 </div>
 
@@ -684,7 +821,7 @@
                     <div class="auth-field">
                         <label for="login-email">Correo electrónico</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <i class="fa-solid fa-envelope auth-input-icon" aria-hidden="true"></i>
                             <input type="email" id="login-email" autocomplete="email"
                                 placeholder="Correo" required>
                         </div>
@@ -693,21 +830,21 @@
                     <div class="auth-field">
                         <label for="login-password">Contraseña</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-lock auth-input-icon"></i>
+                            <i class="fa-solid fa-lock auth-input-icon" aria-hidden="true"></i>
                             <input type="password" id="login-password" autocomplete="current-password"
                                 placeholder="••••••••" required>
                             <button type="button" class="auth-input-toggle" data-toggle="login-password" aria-label="Mostrar contraseña">
-                                <i class="fa-solid fa-eye"></i>
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
 
                     <button type="button" class="auth-link-btn" id="btn-forgot-password">
-                        <i class="fa-solid fa-key"></i> ¿Olvidaste tu contraseña?
+                        <i class="fa-solid fa-key" aria-hidden="true"></i> ¿Olvidaste tu contraseña?
                     </button>
 
                     <button type="submit" class="btn-primary btn-large auth-submit">
-                        <i class="fa-solid fa-right-to-bracket"></i> Entrar
+                        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Entrar
                     </button>
                 </form>
 
@@ -715,7 +852,7 @@
                     <div class="auth-field">
                         <label for="register-username">Nombre de usuario</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-at auth-input-icon"></i>
+                            <i class="fa-solid fa-at auth-input-icon" aria-hidden="true"></i>
                             <input type="text" id="register-username" autocomplete="username"
                                 placeholder="Username" minlength="3" maxlength="20" required>
                         </div>
@@ -725,7 +862,7 @@
                     <div class="auth-field">
                         <label for="register-email">Correo electrónico</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <i class="fa-solid fa-envelope auth-input-icon" aria-hidden="true"></i>
                             <input type="email" id="register-email" autocomplete="email"
                                 placeholder="Correo" required>
                         </div>
@@ -734,16 +871,15 @@
                     <div class="auth-field">
                         <label for="register-password">Contraseña</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-lock auth-input-icon"></i>
+                            <i class="fa-solid fa-lock auth-input-icon" aria-hidden="true"></i>
                             <input type="password" id="register-password" autocomplete="new-password"
                                 placeholder="Mínimo 6 caracteres" minlength="6" required>
                             <button type="button" class="auth-input-toggle" data-toggle="register-password" aria-label="Mostrar contraseña">
-                                <i class="fa-solid fa-eye"></i>
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Checkbox de aceptación legal -->
                     <label class="auth-legal-check" id="register-legal-wrap">
                         <input type="checkbox" id="register-accept-legal">
                         <span class="legal-check-text">
@@ -756,14 +892,14 @@
                     </label>
 
                     <button type="submit" class="btn-primary btn-large auth-submit">
-                        <i class="fa-solid fa-user-plus"></i> Crear cuenta
+                        <i class="fa-solid fa-user-plus" aria-hidden="true"></i> Crear cuenta
                     </button>
                 </form>
 
                 <div id="recover-view" class="auth-form-pro hidden">
                     <div class="auth-recover-hero">
                         <div class="auth-recover-icon">
-                            <i class="fa-solid fa-key"></i>
+                            <i class="fa-solid fa-key" aria-hidden="true"></i>
                         </div>
                         <h4>Recuperar contraseña</h4>
                         <p>Escribe el correo con el que te registraste. Un administrador revisará tu solicitud; si es aprobada, recibirás un enlace en tu correo para definir una nueva contraseña.</p>
@@ -772,46 +908,46 @@
                     <div class="auth-field">
                         <label for="recover-email">Correo electrónico</label>
                         <div class="auth-input-wrap">
-                            <i class="fa-solid fa-envelope auth-input-icon"></i>
+                            <i class="fa-solid fa-envelope auth-input-icon" aria-hidden="true"></i>
                             <input type="email" id="recover-email" autocomplete="email"
                                 placeholder="tucorreo@ejemplo.com" required>
                         </div>
                     </div>
 
                     <button type="button" class="btn-primary btn-large auth-submit" id="btn-submit-recover">
-                        <i class="fa-solid fa-paper-plane"></i> Enviar solicitud
+                        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar solicitud
                     </button>
 
                     <button type="button" class="auth-link-btn" id="btn-back-to-login">
-                        <i class="fa-solid fa-arrow-left"></i> Volver a iniciar sesión
+                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Volver a iniciar sesión
                     </button>
                 </div>
 
-                <div id="auth-error" class="form-error hidden"></div>
-                <div id="auth-success" class="form-success hidden"></div>
+                <div id="auth-error" class="form-error hidden" role="alert"></div>
+                <div id="auth-success" class="form-success hidden" role="status"></div>
             </div>
         </div>
 
-        <!-- ============ MODAL LEGAL (Aviso de Privacidad + Términos) ============ -->
+        <!-- ============ MODAL LEGAL ============ -->
         <div id="legal-modal" class="modal-backdrop hidden">
-            <div class="legal-modal-pro">
+            <div class="legal-modal-pro" role="dialog" aria-modal="true" aria-labelledby="legal-title">
                 <header class="legal-header">
-                    <button class="legal-close" id="legal-close" aria-label="Cerrar">
-                        <i class="fa-solid fa-xmark"></i>
+                    <button class="legal-close" id="legal-close" aria-label="Cerrar" type="button">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                     <div class="legal-header-icon variant-privacy" id="legal-header-icon">
-                        <i class="fa-solid fa-shield-halved"></i>
+                        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
                     </div>
                     <h2 class="legal-header-title" id="legal-title">Aviso de Privacidad</h2>
                     <p class="legal-header-subtitle" id="legal-subtitle">Tratamiento de datos personales</p>
                 </header>
 
-                <div class="legal-tabs" id="legal-tabs">
-                    <button class="legal-tab active" data-legal-tab="privacy" type="button">
-                        <i class="fa-solid fa-user-shield"></i> Privacidad
+                <div class="legal-tabs" id="legal-tabs" role="tablist" aria-label="Documento legal">
+                    <button class="legal-tab active" data-legal-tab="privacy" type="button" role="tab" aria-selected="true">
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Privacidad
                     </button>
-                    <button class="legal-tab" data-legal-tab="terms" type="button">
-                        <i class="fa-solid fa-file-contract"></i> Términos
+                    <button class="legal-tab" data-legal-tab="terms" type="button" role="tab" aria-selected="false">
+                        <i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos
                     </button>
                 </div>
 
@@ -820,7 +956,7 @@
                 <footer class="legal-footer">
                     <p class="legal-updated" id="legal-updated"></p>
                     <button class="btn-primary" id="legal-accept" type="button">
-                        <i class="fa-solid fa-check"></i> Entendido
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> Entendido
                     </button>
                 </footer>
             </div>
@@ -828,43 +964,43 @@
 
         <!-- ============ MODAL FILTROS ============ -->
         <div id="filter-modal" class="modal-backdrop hidden">
-            <div class="auth-modal">
+            <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="filter-modal-title">
                 <div class="auth-header">
-                    <h3>Filtros</h3>
-                    <button class="modal-close" id="filter-close"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 id="filter-modal-title">Filtros</h3>
+                    <button class="modal-close" id="filter-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <div class="input-group">
                     <label for="filter-category">Categoría</label>
                     <div class="select-pro-wrap">
-                        <i class="fa-solid fa-tag select-pro-icon"></i>
+                        <i class="fa-solid fa-tag select-pro-icon" aria-hidden="true"></i>
                         <select id="filter-category">
                             <option value="">Todas</option>
                         </select>
-                        <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                        <i class="fa-solid fa-chevron-down select-pro-arrow" aria-hidden="true"></i>
                     </div>
                 </div>
                 <div class="input-group">
                     <label for="filter-seller">Tipo de vendedor</label>
                     <div class="select-pro-wrap">
-                        <i class="fa-solid fa-user select-pro-icon"></i>
+                        <i class="fa-solid fa-user select-pro-icon" aria-hidden="true"></i>
                         <select id="filter-seller">
                             <option value="">Todos</option>
                             <option value="calle">Puesto de calle</option>
                             <option value="establecimiento">Establecimiento</option>
                         </select>
-                        <i class="fa-solid fa-chevron-down select-pro-arrow"></i>
+                        <i class="fa-solid fa-chevron-down select-pro-arrow" aria-hidden="true"></i>
                     </div>
                 </div>
-                <button class="btn-primary btn-large" id="filter-apply" style="margin-top:16px;">Aplicar</button>
+                <button class="btn-primary btn-large" id="filter-apply" style="margin-top:16px;" type="button">Aplicar</button>
             </div>
         </div>
 
         <!-- ============ MODAL AJUSTES ============ -->
         <div id="settings-modal" class="modal-backdrop hidden">
-            <div class="auth-modal settings-modal-pro">
+            <div class="auth-modal settings-modal-pro" role="dialog" aria-modal="true" aria-labelledby="settings-title">
                 <div class="auth-header">
-                    <h3>Ajustes</h3>
-                    <button class="modal-close" id="settings-close"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 id="settings-title">Ajustes</h3>
+                    <button class="modal-close" id="settings-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <div class="settings-list" id="settings-list"></div>
             </div>
@@ -872,16 +1008,16 @@
 
         <!-- ============ MODAL VISTA PREVIA ============ -->
         <div id="preview-modal" class="modal-backdrop hidden">
-            <div class="auth-modal preview-modal-pro">
+            <div class="auth-modal preview-modal-pro" role="dialog" aria-modal="true" aria-labelledby="preview-title">
                 <div class="auth-header">
-                    <h3>Vista previa</h3>
-                    <button class="modal-close" id="preview-close"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 id="preview-title">Vista previa</h3>
+                    <button class="modal-close" id="preview-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <div id="preview-body" class="preview-body"></div>
                 <div class="admin-confirm-actions">
                     <button class="btn-outline" id="preview-back" type="button">Volver a editar</button>
                     <button class="btn-primary" id="preview-publish" type="button">
-                        <i class="fa-solid fa-paper-plane"></i> Publicar
+                        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Publicar
                     </button>
                 </div>
             </div>
@@ -889,16 +1025,16 @@
 
         <!-- ============ MODAL BORRADOR ============ -->
         <div id="draft-modal" class="modal-backdrop hidden">
-            <div class="auth-modal">
+            <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="draft-title">
                 <div class="auth-header">
-                    <h3>Borrador guardado</h3>
-                    <button class="modal-close" id="draft-close"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 id="draft-title">Borrador guardado</h3>
+                    <button class="modal-close" id="draft-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <p class="unsaved-text">Encontramos una publicación sin terminar. ¿Quieres continuar donde la dejaste?</p>
                 <div class="admin-confirm-actions">
                     <button class="btn-outline" id="draft-discard" type="button">Descartar</button>
                     <button class="btn-primary" id="draft-continue" type="button">
-                        <i class="fa-solid fa-arrow-right"></i> Continuar
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Continuar
                     </button>
                 </div>
             </div>
@@ -906,16 +1042,16 @@
 
         <!-- ============ MODAL SALIR SIN GUARDAR ============ -->
         <div id="unsaved-modal" class="modal-backdrop hidden">
-            <div class="auth-modal">
+            <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-title">
                 <div class="auth-header">
-                    <h3>Salir sin guardar</h3>
-                    <button class="modal-close" id="unsaved-close"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 id="unsaved-title">Salir sin guardar</h3>
+                    <button class="modal-close" id="unsaved-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <p class="unsaved-text">Se perderán los cambios realizados en esta publicación.</p>
                 <div class="admin-confirm-actions">
                     <button class="btn-outline" id="unsaved-cancel" type="button">Cancelar</button>
                     <button class="btn-primary" id="unsaved-confirm" type="button">
-                        <i class="fa-solid fa-right-from-bracket"></i> Salir
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Salir
                     </button>
                 </div>
             </div>
@@ -923,10 +1059,10 @@
 
         <!-- ============ MODAL CONFIRMACIÓN GENÉRICA ============ -->
         <div id="confirm-modal" class="modal-backdrop hidden">
-            <div class="auth-modal">
+            <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
                 <div class="auth-header">
                     <h3 id="confirm-title">Confirmar</h3>
-                    <button class="modal-close" id="confirm-close"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="modal-close" id="confirm-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <p id="confirm-text" class="unsaved-text"></p>
                 <div class="admin-confirm-actions">
@@ -936,12 +1072,12 @@
             </div>
         </div>
 
-        <!-- ============ MODAL SELLER (quiero vender) ============ -->
+        <!-- ============ MODAL SELLER ============ -->
         <div id="seller-modal" class="modal-backdrop hidden">
-            <div class="auth-modal seller-modal-pro">
+            <div class="auth-modal seller-modal-pro" role="dialog" aria-modal="true" aria-labelledby="seller-modal-title">
                 <div class="auth-header">
                     <h3 id="seller-modal-title">Quiero vender</h3>
-                    <button class="modal-close" id="seller-close"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="modal-close" id="seller-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <div id="seller-modal-body"></div>
             </div>
@@ -949,52 +1085,53 @@
 
         <!-- ============ MODAL CONFIRM ADMIN ============ -->
         <div id="admin-confirm-modal" class="modal-backdrop hidden">
-            <div class="auth-modal admin-confirm-modal">
+            <div class="auth-modal admin-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title">
                 <div class="auth-header">
                     <h3 id="admin-confirm-title">Confirmar</h3>
-                    <button class="modal-close" id="admin-confirm-close"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="modal-close" id="admin-confirm-close" aria-label="Cerrar" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
                 <p id="admin-confirm-text"></p>
                 <div class="input-group hidden" id="admin-confirm-input-wrap">
-                    <label id="admin-confirm-input-label"></label>
+                    <label id="admin-confirm-input-label" for="admin-confirm-input"></label>
                     <textarea id="admin-confirm-input" rows="3" maxlength="500"></textarea>
                 </div>
-                <div class="form-error hidden" id="admin-confirm-error"></div>
+                <div class="form-error hidden" id="admin-confirm-error" role="alert"></div>
                 <div class="admin-confirm-actions">
-                    <button class="btn-outline" id="admin-confirm-cancel">Cancelar</button>
-                    <button class="btn-primary" id="admin-confirm-ok">Confirmar</button>
+                    <button class="btn-outline" id="admin-confirm-cancel" type="button">Cancelar</button>
+                    <button class="btn-primary" id="admin-confirm-ok" type="button">Confirmar</button>
                 </div>
             </div>
         </div>
 
         <!-- ============ NAVBAR ============ -->
         <nav class="bottom-nav" aria-label="Navegación principal">
-            <button class="nav-item active" data-view="home" aria-label="Inicio">
-                <i class="fa-solid fa-house"></i><span>Inicio</span>
+            <button class="nav-item active" data-view="home" aria-label="Inicio" type="button">
+                <i class="fa-solid fa-house" aria-hidden="true"></i><span>Inicio</span>
             </button>
-            <button class="nav-item" data-view="search" aria-label="Buscar">
-                <i class="fa-solid fa-magnifying-glass"></i><span>Buscar</span>
+            <button class="nav-item" data-view="search" aria-label="Buscar" type="button">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Buscar</span>
             </button>
-            <button class="nav-item nav-center" data-view="anunciarme" aria-label="Crear publicación">
-                <i class="fa-solid fa-plus"></i><span>Anunciarme</span>
+            <button class="nav-item nav-center" data-view="anunciarme" aria-label="Crear publicación" type="button">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i><span>Anunciarme</span>
             </button>
-            <button class="nav-item" data-view="messaging" aria-label="Mensajes">
-                <i class="fa-solid fa-comments"></i><span>Mensajes</span>
+            <button class="nav-item" data-view="messaging" aria-label="Mensajes" type="button">
+                <i class="fa-solid fa-comments" aria-hidden="true"></i><span>Mensajes</span>
             </button>
-            <button class="nav-item" data-view="perfil" aria-label="Perfil">
-                <i class="fa-solid fa-user"></i><span>Perfil</span>
+            <button class="nav-item" data-view="perfil" aria-label="Perfil" type="button">
+                <i class="fa-solid fa-user" aria-hidden="true"></i><span>Perfil</span>
             </button>
         </nav>
     </div>
 </div>
 
-<div id="toast" class="toast hidden">
-    <i class="fa-solid fa-circle-check" id="toast-icon"></i>
+<!-- v3.1: Toast anunciado por lectores de pantalla -->
+<div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true">
+    <i class="fa-solid fa-circle-check" id="toast-icon" aria-hidden="true"></i>
     <span id="toast-message"></span>
 </div>
 
 <input type="file" id="avatar-input" accept="image/*" hidden>
-
+<script src="js/bootstrap-cordova.js"></script>
 <!-- ============ CORE ============ -->
 <script src="js/core/app-state.js"></script>
 <script src="js/core/logger.js"></script>
@@ -1012,6 +1149,9 @@
 <script src="js/utils/validators.js"></script>
 <script src="js/utils/formatters.js"></script>
 <script src="js/utils/dom.js"></script>
+<!-- NUEVO v3.2: utilidades de accesibilidad -->
+<script src="js/utils/focus-trap.js"></script>
+<script src="js/utils/aria-disabled.js"></script>
 
 <!-- ============ SERVICES ============ -->
 <script src="js/services/permission-service.js"></script>
@@ -1031,7 +1171,8 @@
 <script src="js/services/conversation-service.js"></script>
 <script src="js/services/message-service.js"></script>
 
-    <script src="js/services/follow-service.js"></script>
+<script src="js/services/follow-service.js"></script>
+
 <!-- ============ COMPONENTS ============ -->
 <script src="js/components/toast.js"></script>
 <script src="js/components/splash.js"></script>
@@ -1046,14 +1187,11 @@
 <script src="js/features/seller/seller-ui.js"></script>
 <script src="js/features/admin/admin-ui.js"></script>
 
-<!-- SellerProfileUI antes que MessagingUI (MessagingUI puede abrirlo) -->
 <script src="js/features/seller-profile/seller-profile-ui.js"></script>
 <script src="js/features/messaging/messaging-ui.js"></script>
 
-<!-- ============ LEGAL (antes de app.js) ============ -->
 <script src="js/features/legal/legal-ui.js"></script>
 
-<!-- ============ BOOTSTRAP ============ -->
 <script src="js/app.js"></script>
 </body>
 </html>

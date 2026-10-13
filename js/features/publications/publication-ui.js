@@ -1,11 +1,19 @@
 /* =====================================================
    PIPGO · PUBLICATION UI
-   Home (realtime), Search, Form (crear/editar), Sheet,
-   Lightbox, WhatsApp, unidades, condición, presentación,
-   contador, vista previa, borrador, protección de salida,
-   empty states inteligentes, skeletons y haptics.
-   + Integración con SellerProfileUI, MessagingUI,
-     búsqueda de vendedores y corazón de follow.
+   Home (realtime), Search, Form, Sheet, Lightbox, etc.
+   -----------------------------------------------------
+   v3.3 (Ronda 5 fixes):
+   - Body lock migrado a BodyLock.acquire/release en
+     TODOS los modales/overlays (sheet, lightbox, preview,
+     filter, draft, unsaved). Esto resuelve el bug del
+     "Auth sobre Product Sheet deja body scrolleable tras
+     cerrar Auth".
+   - aria-busy en el form durante submit.
+   - API pública añade:
+       isDraftModalOpen, closeDraftModal,
+       isUnsavedModalOpen, closeUnsaved.
+   - Heredado v3.2 (Ronda 3): FocusTrap en preview/filter/
+     draft/unsaved/lightbox + AriaDisabled en submit.
    ===================================================== */
 
 (function () {
@@ -63,14 +71,14 @@
     let previewHistoryPushed = false;
     let suppressPopstate = false;
 
-    /* Filtros
-       -----------------------------------------------------
-       activeFilterCategory / activeFilterSeller son EXCLUSIVOS
-       de la vista Search. El Home tiene su propio filtro en
-       AppState.activeCategoryFilter. Son independientes. */
+    /* Filtros */
     let filterModal, filterClose, filterApply, filterCategory, filterSeller;
     let activeFilterCategory = '';
     let activeFilterSeller = '';
+
+    /* Ronda 5: cleanup registrado por confirmLeave para
+       que closeUnsaved() pueda invocarlo externamente. */
+    let unsavedCleanup = null;
 
     /* Lightbox */
     let lightboxImages = [];
@@ -97,6 +105,16 @@
     let draftSaveTimeout = null;
 
     let initialized = false;
+
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
 
     /* =====================================================
        HELPERS DE FORM
@@ -449,19 +467,18 @@
         card.className = 'product-card';
         card.dataset.id = pub.id;
 
-        // PLAN D: fallback local, sin red.
         const safeImg = Formatters.safeUrl(pub.mainImage) || Formatters.placeholderImage();
         const categoryChip = pub.category
             ? `<span class="product-category-chip">${Formatters.escapeHtml(pub.category)}</span>`
             : '';
         const storeLine = pub.storeName
-            ? `<span class="product-store"><i class="fa-solid fa-store"></i> ${Formatters.escapeHtml(pub.storeName)}</span>`
+            ? `<span class="product-store"><i class="fa-solid fa-store" aria-hidden="true"></i> ${Formatters.escapeHtml(pub.storeName)}</span>`
             : '';
 
         const scheduleLabel = Formatters.formatScheduleCompact(pub.schedule);
         const scheduleChip = scheduleLabel
             ? `<span class="product-schedule-chip" title="${Formatters.escapeHtml(scheduleLabel)}">
-                   <i class="fa-regular fa-clock"></i> ${Formatters.escapeHtml(scheduleLabel)}
+                   <i class="fa-regular fa-clock" aria-hidden="true"></i> ${Formatters.escapeHtml(scheduleLabel)}
                </span>`
             : '';
 
@@ -472,7 +489,7 @@
                 pub.latitude, pub.longitude
             );
             const txt = Formatters.formatDistance(meters);
-            if (txt) distanceHtml = `<i class="fa-solid fa-location-dot"></i><span>${txt}</span>`;
+            if (txt) distanceHtml = `<i class="fa-solid fa-location-dot" aria-hidden="true"></i><span>${txt}</span>`;
         }
 
         const presentationLabel = (function () {
@@ -485,7 +502,7 @@
         const timeText = Formatters.formatRelativeTime(pub.createdAt);
         const metaParts = [];
         if (distanceHtml) metaParts.push(distanceHtml);
-        if (presentationLabel) metaParts.push(`<i class="fa-solid fa-box-open"></i><span>${Formatters.escapeHtml(presentationLabel)}</span>`);
+        if (presentationLabel) metaParts.push(`<i class="fa-solid fa-box-open" aria-hidden="true"></i><span>${Formatters.escapeHtml(presentationLabel)}</span>`);
         if (timeText) metaParts.push(`<span>${timeText}</span>`);
         const metaHtml = metaParts.map((p, i) => i === 0 ? p : `<span class="dot">·</span>${p}`).join('');
 
@@ -495,7 +512,7 @@
             <div class="product-img">
                 <img src="${safeImg}" alt="${Formatters.escapeHtml(pub.name || '')}" loading="lazy">
                 ${categoryChip}
-                <button class="product-favorite" data-fav-id="${pub.id}" aria-label="Guardar"><i class="fa-regular fa-bookmark"></i></button>
+                <button class="product-favorite" data-fav-id="${pub.id}" aria-label="Guardar en favoritos" type="button"><i class="fa-regular fa-bookmark" aria-hidden="true"></i></button>
             </div>
             <div class="product-info">
                 ${storeLine}
@@ -559,11 +576,11 @@
         const wrap = document.createElement('div');
         wrap.className = 'empty-state-intelligent';
         wrap.innerHTML = `
-            <div class="empty-state-icon"><i class="fa-solid ${icon}"></i></div>
+            <div class="empty-state-icon"><i class="fa-solid ${icon}" aria-hidden="true"></i></div>
             <h4>${Formatters.escapeHtml(title)}</h4>
             <p>${Formatters.escapeHtml(text)}</p>
-            ${actionLabel ? `<button class="empty-action" id="${actionId}">
-                <i class="fa-solid fa-arrow-right"></i> ${Formatters.escapeHtml(actionLabel)}
+            ${actionLabel ? `<button class="empty-action" id="${actionId}" type="button">
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> ${Formatters.escapeHtml(actionLabel)}
             </button>` : ''}`;
         container.appendChild(wrap);
 
@@ -717,7 +734,7 @@
 
             const avatarHtml = seller.avatarUrl
                 ? `<img src="${Formatters.safeUrl(seller.avatarUrl)}" alt="">`
-                : `<i class="fa-solid fa-user"></i>`;
+                : `<i class="fa-solid fa-user" aria-hidden="true"></i>`;
 
             const name = seller.displayName || seller.businessName || '';
             const category = seller.category || '';
@@ -771,8 +788,8 @@
             chip.className = 'home-filter-chip' + (current === cat ? ' active' : '');
             chip.dataset.cat = cat;
             chip.textContent = label;
-            chip.setAttribute('role', 'tab');
-            chip.setAttribute('aria-selected', current === cat ? 'true' : 'false');
+            chip.setAttribute('role', 'radio');
+            chip.setAttribute('aria-checked', current === cat ? 'true' : 'false');
             chip.addEventListener('click', () => onHomeFilterClick(cat));
             return chip;
         };
@@ -787,7 +804,7 @@
         document.querySelectorAll('#home-filter-chips .home-filter-chip').forEach(c => {
             const isActive = (c.dataset.cat || '') === (cat || '');
             c.classList.toggle('active', isActive);
-            c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            c.setAttribute('aria-checked', isActive ? 'true' : 'false');
         });
 
         const list = AppState.activeCategoryFilter
@@ -803,8 +820,9 @@
         scroll.innerHTML = '';
 
         const allBtn = document.createElement('button');
+        allBtn.type = 'button';
         allBtn.className = 'category-pill' + (!activeFilterCategory ? ' active' : '');
-        allBtn.innerHTML = '<i class="fa-solid fa-border-all pill-ico"></i> Todas';
+        allBtn.innerHTML = '<i class="fa-solid fa-border-all pill-ico" aria-hidden="true"></i> Todas';
         allBtn.addEventListener('click', () => {
             activeFilterCategory = '';
             renderCategoriesScroll();
@@ -816,6 +834,7 @@
 
         cats.forEach(cat => {
             const btn = document.createElement('button');
+            btn.type = 'button';
             btn.className = 'category-pill' + (activeFilterCategory === cat ? ' active' : '');
             btn.textContent = cat;
             btn.addEventListener('click', () => {
@@ -835,9 +854,10 @@
         row.innerHTML = '';
         if (activeFilterSeller) {
             const chip = document.createElement('button');
+            chip.type = 'button';
             chip.className = 'filter-chip';
             const label = activeFilterSeller === 'calle' ? 'Puesto de calle' : 'Establecimiento';
-            chip.innerHTML = `${label} <i class="fa-solid fa-xmark"></i>`;
+            chip.innerHTML = `${label} <i class="fa-solid fa-xmark" aria-hidden="true"></i>`;
             chip.addEventListener('click', () => {
                 activeFilterSeller = '';
                 renderFilterChips();
@@ -857,6 +877,7 @@
         suggestionChips.innerHTML = '';
         suggestions.forEach(text => {
             const chip = document.createElement('button');
+            chip.type = 'button';
             chip.className = 'suggestion-chip';
             chip.textContent = text;
             chip.addEventListener('click', () => {
@@ -869,6 +890,8 @@
 
     /* =====================================================
        FILTROS
+       -----------------------------------------------------
+       Ronda 5: BodyLock.acquire/release + FocusTrap.
        ===================================================== */
     function openFilterModal() {
         const cats = getActiveCategories(AppState.currentPublications);
@@ -880,9 +903,24 @@
         });
         filterCategory.value = activeFilterCategory;
         filterSeller.value = activeFilterSeller;
+
         filterModal.classList.remove('hidden');
+
+        _lockBody();
+        if (window.FocusTrap) {
+            FocusTrap.activate(filterModal, filterClose);
+        }
     }
-    function closeFilterModal() { filterModal.classList.add('hidden'); }
+
+    function closeFilterModal() {
+        filterModal.classList.add('hidden');
+
+        _unlockBody();
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(filterModal);
+        }
+    }
+
     function isFilterModalOpen() { return !filterModal.classList.contains('hidden'); }
 
     function applyFilters() {
@@ -1071,7 +1109,7 @@
             chip.dataset.condition = code;
             chip.setAttribute('role', 'radio');
             chip.setAttribute('aria-checked', index === 0 ? 'true' : 'false');
-            chip.innerHTML = `<i class="fa-solid ${icons[code] || 'fa-circle-dot'}"></i> ${Formatters.escapeHtml(label)}`;
+            chip.innerHTML = `<i class="fa-solid ${icons[code] || 'fa-circle-dot'}" aria-hidden="true"></i> ${Formatters.escapeHtml(label)}`;
             chip.addEventListener('click', () => {
                 conditionChips.querySelectorAll('.condition-chip').forEach(c => {
                     c.classList.remove('active');
@@ -1201,7 +1239,7 @@
         if (btnGetLocation.disabled) return;
 
         btnGetLocation.disabled = true;
-        btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Obteniendo ubicación…';
+        btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Obteniendo ubicación…';
 
         try {
             const location = await LocationService.fetchFullLocation();
@@ -1213,7 +1251,7 @@
             Toast.error(error.message || 'No pudimos obtener la ubicación.');
         } finally {
             btnGetLocation.disabled = false;
-            btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Usar mi ubicación';
+            btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Usar mi ubicación';
         }
     }
 
@@ -1348,15 +1386,43 @@
         publicationForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    /* =====================================================
+       DRAFT MODAL
+       -----------------------------------------------------
+       Ronda 5: BodyLock + FocusTrap + API pública para
+       que app.js (ESC handler) pueda cerrarlo.
+       ===================================================== */
     function maybeOfferDraftRestore() {
         if (publicationForm.dataset.editId) return;
         if (!hasDraft()) return;
         if (!draftModal) return;
+
         draftModal.classList.remove('hidden');
+
+        _lockBody();
+        if (window.FocusTrap) {
+            FocusTrap.activate(draftModal, draftContinueBtn);
+        }
+    }
+
+    function closeDraftModal() {
+        if (!draftModal) return;
+        draftModal.classList.add('hidden');
+
+        _unlockBody();
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(draftModal);
+        }
+    }
+
+    function isDraftModalOpen() {
+        return draftModal && !draftModal.classList.contains('hidden');
     }
 
     /* =====================================================
        PROTECCIÓN DE SALIDA
+       -----------------------------------------------------
+       Ronda 5: BodyLock + FocusTrap + closeUnsaved() externo.
        ===================================================== */
     function hasUnsavedChanges() {
         if (!AppState.formDirtyState) return false;
@@ -1376,6 +1442,13 @@
             cancelBtn.removeEventListener('click', onCancel);
             closeBtn.removeEventListener('click', onCancel);
             unsavedModal.classList.add('hidden');
+
+            _unlockBody();
+            if (window.FocusTrap) {
+                FocusTrap.deactivate(unsavedModal);
+            }
+
+            unsavedCleanup = null;
         };
         const onOk = () => { cleanup(); onConfirm(); };
         const onCancel = () => { cleanup(); };
@@ -1385,10 +1458,31 @@
         closeBtn.addEventListener('click', onCancel);
 
         unsavedModal.classList.remove('hidden');
+
+        _lockBody();
+        if (window.FocusTrap) {
+            FocusTrap.activate(unsavedModal, confirmBtn);
+        }
+
+        /* Ronda 5: registramos el cleanup para que app.js pueda
+           invocarlo si el usuario pulsa ESC. */
+        unsavedCleanup = cleanup;
+    }
+
+    /* Ronda 5: cierra el modal de "salir sin guardar" desde
+       fuera (ej. app.js ESC handler). */
+    function closeUnsaved() {
+        if (unsavedCleanup) unsavedCleanup();
+    }
+
+    function isUnsavedModalOpen() {
+        return unsavedModal && !unsavedModal.classList.contains('hidden');
     }
 
     /* =====================================================
        VISTA PREVIA
+       -----------------------------------------------------
+       Ronda 5: BodyLock + FocusTrap.
        ===================================================== */
     function openPreview() {
         hideFormError();
@@ -1401,7 +1495,11 @@
 
         previewBody.innerHTML = buildPreviewHtml(data);
         previewModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+
+        _lockBody();
+        if (window.FocusTrap) {
+            FocusTrap.activate(previewModal, previewClose);
+        }
 
         if (!previewHistoryPushed) {
             history.pushState({ view: AppState.currentView, overlay: 'preview' }, '', '');
@@ -1411,7 +1509,12 @@
 
     function closePreview(syncHistory = true) {
         previewModal.classList.add('hidden');
-        document.body.style.overflow = '';
+
+        _unlockBody();
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(previewModal);
+        }
+
         previewBody.innerHTML = '';
 
         if (previewHistoryPushed) {
@@ -1433,13 +1536,13 @@
         if (data.condition) {
             const label = window.CategoryConfig ? CategoryConfig.conditionLabel(data.condition) : '';
             if (label) badges.push(`<span class="sheet-badge sheet-badge-condition">
-                <i class="fa-solid fa-circle-check"></i> ${Formatters.escapeHtml(label)}
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${Formatters.escapeHtml(label)}
             </span>`);
         }
         if (data.presentation && data.presentation.quantity) {
             const short = window.UnitCatalog ? UnitCatalog.short(data.presentation.unitCode) : '';
             if (short) badges.push(`<span class="sheet-badge sheet-badge-presentation">
-                <i class="fa-solid fa-box-open"></i> ${data.presentation.quantity} ${Formatters.escapeHtml(short)}
+                <i class="fa-solid fa-box-open" aria-hidden="true"></i> ${data.presentation.quantity} ${Formatters.escapeHtml(short)}
             </span>`);
         }
         const badgesHtml = badges.length
@@ -1447,7 +1550,7 @@
             : '';
 
         const storeHtml = data.storeName
-            ? `<p class="sheet-store-name"><i class="fa-solid fa-store"></i> ${Formatters.escapeHtml(data.storeName)}</p>`
+            ? `<p class="sheet-store-name"><i class="fa-solid fa-store" aria-hidden="true"></i> ${Formatters.escapeHtml(data.storeName)}</p>`
             : '';
 
         const priceHtml = Formatters.formatPriceWithUnit(data.price, data.unitCode);
@@ -1455,7 +1558,7 @@
         const scheduleFull = Formatters.formatScheduleFull(data.schedule);
         const scheduleHtml = scheduleFull
             ? `<div class="sheet-schedule-block">
-                   <div class="sheet-schedule-icon"><i class="fa-regular fa-clock"></i></div>
+                   <div class="sheet-schedule-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></div>
                    <div class="sheet-schedule-info">
                        <span>Horario</span>
                        <strong>${Formatters.escapeHtml(scheduleFull)}</strong>
@@ -1466,26 +1569,26 @@
         const contactHtml = (data.phone || data.hasWhatsapp)
             ? `<div class="sheet-contact-row">
                    <div class="contact-info">
-                       <i class="fa-solid fa-phone"></i>
+                       <i class="fa-solid fa-phone" aria-hidden="true"></i>
                        <span>${Formatters.escapeHtml(data.phone || '—')}</span>
                    </div>
                    <div class="sheet-contact-actions">
-                       ${data.phone ? `<span class="btn-outline btn-call"><i class="fa-solid fa-phone"></i> Llamar</span>` : ''}
-                       ${(data.phone && data.hasWhatsapp) ? `<span class="btn-outline btn-whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>` : ''}
+                       ${data.phone ? `<span class="btn-outline btn-call"><i class="fa-solid fa-phone" aria-hidden="true"></i> Llamar</span>` : ''}
+                       ${(data.phone && data.hasWhatsapp) ? `<span class="btn-outline btn-whatsapp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</span>` : ''}
                    </div>
                </div>`
             : '';
 
         const refsHtml = data.extraRefs
             ? `<div class="sheet-refs-block">
-                   <div class="refs-header"><i class="fa-solid fa-circle-info"></i> Referencias</div>
+                   <div class="refs-header"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Referencias</div>
                    <p>${Formatters.escapeHtml(data.extraRefs)}</p>
                </div>`
             : '';
 
         const locHtml = data.reference
             ? `<div class="sheet-location-card">
-                   <div class="location-icon"><i class="fa-solid fa-location-dot"></i></div>
+                   <div class="location-icon"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></div>
                    <div class="location-info">
                        <span>Ubicación de referencia</span>
                        <strong>${Formatters.escapeHtml(data.reference)}</strong>
@@ -1494,7 +1597,7 @@
             : '';
 
         const sellerChip = `<span class="preview-seller-chip">
-            <i class="fa-solid fa-user"></i> ${Formatters.escapeHtml(
+            <i class="fa-solid fa-user" aria-hidden="true"></i> ${Formatters.escapeHtml(
                 (AppState.currentProfile && AppState.currentProfile.username)
                     ? '@' + AppState.currentProfile.username
                     : 'Tú'
@@ -1552,6 +1655,9 @@
 
     /* =====================================================
        SUBMIT
+       -----------------------------------------------------
+       Ronda 5: aria-busy en el form durante submit, además
+       de AriaDisabled en el botón.
        ===================================================== */
     async function handleSubmit(e) {
         e.preventDefault();
@@ -1591,19 +1697,15 @@
         const secondarySlots = photoSlots.slice(1);
 
         AppState.isSubmitting = true;
-        btnSubmit.disabled = true;
+        if (window.AriaDisabled) AriaDisabled.set(btnSubmit, true);
+        else btnSubmit.disabled = true;
+        if (publicationForm) publicationForm.setAttribute('aria-busy', 'true');
 
         const uploadedUrls = [];
 
         try {
             let location = AppState.currentLocation;
 
-            // PLAN C — Ubicación no bloqueante.
-            // Si no hay coords válidas, hacemos UN intento automático.
-            // Si el permiso fue denegado, el GPS falla o el navegador
-            // no lo soporta, seguimos sin coordenadas: la referencia
-            // de texto (product-ref) ya es obligatoria y basta para
-            // publicar. Nunca se bloquea la publicación por GPS.
             if (!hasValidLocation()) {
                 setSubmitButton('Obteniendo ubicación…', 'fa-location-crosshairs');
                 try {
@@ -1612,8 +1714,6 @@
                     applyLocationToInput(location);
                 } catch (locErr) {
                     Logger.warn('Publicando sin ubicación GPS', locErr);
-                    // Stub con claves nulas: el payload sigue siendo
-                    // homogéneo (siempre tiene lat/lng/address/etc.).
                     location = {
                         latitude: null,
                         longitude: null,
@@ -1708,7 +1808,10 @@
             showFormError(msg);
         } finally {
             AppState.isSubmitting = false;
-            btnSubmit.disabled = false;
+            if (window.AriaDisabled) AriaDisabled.set(btnSubmit, false);
+            else btnSubmit.disabled = false;
+            if (publicationForm) publicationForm.removeAttribute('aria-busy');
+
             if (publicationForm.dataset.editId) {
                 setSubmitButton('Guardar cambios', 'fa-floppy-disk');
             } else {
@@ -1832,7 +1935,6 @@
             sheetSellerFollowBtn.classList.add('hidden');
             return;
         }
-        // Ocultar si soy yo mismo o no estoy autenticado
         if (!AppState.currentUser || AppState.currentUser.uid === pub.userId) {
             sheetSellerFollowBtn.classList.add('hidden');
             return;
@@ -1885,11 +1987,6 @@
         }
     }
 
-    /**
-     * Llamado desde app.js (pendingAction.followSeller) cuando el
-     * usuario acaba de iniciar sesión. Refresca el ícono si el sheet
-     * está abierto para el mismo vendedor.
-     */
     function refreshSheetFollowState(sellerUid) {
         if (!isSheetOpen) return;
         const pub = AppState.currentProduct;
@@ -1899,6 +1996,8 @@
 
     /* =====================================================
        SHEET DE PRODUCTO
+       -----------------------------------------------------
+       Ronda 5: BodyLock.acquire() al abrir.
        ===================================================== */
     function openProductSheet(product) {
         AppState.currentProduct = product;
@@ -1909,7 +2008,7 @@
 
         if (sheetSellerBlock) {
             sheetSellerBlock.classList.remove('hidden');
-            sheetSellerAvatar.innerHTML = '<i class="fa-solid fa-user"></i>';
+            sheetSellerAvatar.innerHTML = '<i class="fa-solid fa-user" aria-hidden="true"></i>';
             sheetSellerUsername.textContent = '@…';
             sheetSellerBlock.dataset.uid = product.userId || '';
 
@@ -1941,11 +2040,10 @@
             }
         }
 
-        // Corazón de follow
         updateSheetFollowButton();
 
         if (product.storeName) {
-            sheetStore.innerHTML = `<i class="fa-solid fa-store"></i> ${Formatters.escapeHtml(product.storeName)}`;
+            sheetStore.innerHTML = `<i class="fa-solid fa-store" aria-hidden="true"></i> ${Formatters.escapeHtml(product.storeName)}`;
             sheetStore.style.display = 'flex';
         } else {
             sheetStore.style.display = 'none';
@@ -1956,13 +2054,13 @@
             if (product.condition) {
                 const label = window.CategoryConfig ? CategoryConfig.conditionLabel(product.condition) : '';
                 if (label) badges.push(`<span class="sheet-badge sheet-badge-condition">
-                    <i class="fa-solid fa-circle-check"></i> ${Formatters.escapeHtml(label)}
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${Formatters.escapeHtml(label)}
                 </span>`);
             }
             if (product.presentation && product.presentation.quantity) {
                 const short = window.UnitCatalog ? UnitCatalog.short(product.presentation.unitCode) : '';
                 if (short) badges.push(`<span class="sheet-badge sheet-badge-presentation">
-                    <i class="fa-solid fa-box-open"></i> ${product.presentation.quantity} ${Formatters.escapeHtml(short)}
+                    <i class="fa-solid fa-box-open" aria-hidden="true"></i> ${product.presentation.quantity} ${Formatters.escapeHtml(short)}
                 </span>`);
             }
             if (badges.length) {
@@ -1975,7 +2073,7 @@
         }
 
         sheetPrice.textContent = Formatters.formatPriceWithUnit(product.price, product.unitCode);
-        sheetTime.innerHTML = `<i class="fa-solid fa-clock"></i> ${Formatters.formatRelativeTime(product.createdAt)}`;
+        sheetTime.innerHTML = `<i class="fa-solid fa-clock" aria-hidden="true"></i> ${Formatters.formatRelativeTime(product.createdAt)}`;
         sheetDesc.textContent = product.description || 'Sin descripción.';
 
         if (product.extraRefs && product.extraRefs.trim()) {
@@ -2024,7 +2122,7 @@
 
         sheetBackdrop.classList.add('open');
         isSheetOpen = true;
-        document.body.style.overflow = 'hidden';
+        _lockBody();  /* Ronda 5 */
         FavoriteUI.updateAllButtons();
 
         if (!productSheetHistoryPushed) {
@@ -2036,7 +2134,7 @@
     function closeProductSheet(syncHistory = true) {
         sheetBackdrop.classList.remove('open');
         isSheetOpen = false;
-        document.body.style.overflow = '';
+        _unlockBody();  /* Ronda 5 */
         AppState.currentProduct = null;
         if (sheetSellerFollowBtn) sheetSellerFollowBtn.classList.add('hidden');
 
@@ -2179,6 +2277,8 @@
 
     /* =====================================================
        LIGHTBOX
+       -----------------------------------------------------
+       Ronda 5: BodyLock + FocusTrap.
        ===================================================== */
     function openLightbox(index) {
         if (!lightboxImages.length) return;
@@ -2206,7 +2306,12 @@
 
         lightbox.classList.remove('hidden');
         goToLightbox(index, false);
-        document.body.style.overflow = 'hidden';
+
+        _lockBody();  /* Ronda 5: acquire adicional sobre el sheet */
+
+        if (window.FocusTrap) {
+            FocusTrap.activate(lightbox, lightboxClose);
+        }
 
         if (!lightboxHistoryPushed) {
             history.pushState({ view: AppState.currentView, overlay: 'lightbox' }, '', '');
@@ -2220,8 +2325,12 @@
         lightboxDots.innerHTML = '';
         lightboxImages = [];
         lbCurrentScale = 1;
-        if (isSheetOpen) document.body.style.overflow = 'hidden';
-        else document.body.style.overflow = '';
+
+        _unlockBody();  /* Ronda 5: release adicional sobre el sheet */
+
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(lightbox);
+        }
 
         if (lightboxHistoryPushed) {
             lightboxHistoryPushed = false;
@@ -2497,6 +2606,12 @@
 
         photoSlots.forEach(slot => {
             slot.slot.addEventListener('click', () => { if (!slot.uploadedUrl) slot.input.click(); });
+            slot.slot.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && !slot.uploadedUrl) {
+                    e.preventDefault();
+                    slot.input.click();
+                }
+            });
             slot.input.addEventListener('change', e => {
                 const file = e.target.files[0];
                 if (file) { processAndPreview(slot, file); markFormDirty(); }
@@ -2547,20 +2662,20 @@
         if (draftContinueBtn) {
             draftContinueBtn.addEventListener('click', () => {
                 const d = Storage.get(DRAFT_KEY, null);
-                draftModal.classList.add('hidden');
+                closeDraftModal();
                 if (d) applyDraftToForm(d);
             });
         }
         if (draftDiscardBtn) {
             draftDiscardBtn.addEventListener('click', () => {
-                draftModal.classList.add('hidden');
+                closeDraftModal();
                 clearDraft();
                 AppState.formDirtyState = false;
             });
         }
         if (draftCloseBtn) {
             draftCloseBtn.addEventListener('click', () => {
-                draftModal.classList.add('hidden');
+                closeDraftModal();
             });
         }
 
@@ -2638,7 +2753,6 @@
             });
         }
 
-        // Corazón de follow en el sheet
         if (sheetSellerFollowBtn) {
             sheetSellerFollowBtn.addEventListener('click', onSheetFollowClick);
         }
@@ -2653,7 +2767,6 @@
             }
 
             if (!AppState.currentUser) {
-                // Guardar contexto y CERRAR el sheet ANTES de abrir el login
                 AppState.pendingAction = {
                     type: 'openChatWith',
                     sellerUid: pub.userId,
@@ -2667,7 +2780,7 @@
             }
 
             const originalHtml = btnChatV2.innerHTML;
-            btnChatV2.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Abriendo conversación…';
+            btnChatV2.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abriendo conversación…';
             btnChatV2.disabled = true;
 
             try {
@@ -2737,6 +2850,11 @@
         closeFilterModal,
         isPreviewModalOpen: () => previewModal && !previewModal.classList.contains('hidden'),
         closePreview,
+        /* Ronda 5: nuevas APIs para el ESC handler de app.js */
+        isDraftModalOpen,
+        closeDraftModal,
+        isUnsavedModalOpen,
+        closeUnsaved,
         hasUnsavedChanges,
         confirmLeave,
         consumeSuppressPopstate: () => {

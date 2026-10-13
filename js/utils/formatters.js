@@ -1,14 +1,8 @@
 /* =====================================================
    PIPGO · FORMATTERS
-   Formateo de texto, URLs, precios, tiempo, distancia
-   y horarios. Funciones puras, sin side effects.
-   -----------------------------------------------------
-   PLAN D:
-   - placeholderImage(): data URI SVG local para usar
-     como fallback cuando una publicación no tiene
-     imagen. Reemplaza https://via.placeholder.com
-     (dependencia de red, bloqueada por algunos CSP
-     y redes corporativas).
+   v2.0:
+   - formatRelativeTime singulariza correctamente ("hace 1 día").
+   - placeholderImage() y safeUrl() sin cambios (ya estaban bien).
    ===================================================== */
 
 window.Formatters = {
@@ -19,12 +13,6 @@ window.Formatters = {
         return div.innerHTML;
     },
 
-    /**
-     * FIX: ahora permite blob: además de http/https.
-     * Las vistas previas usan URL.createObjectURL() que
-     * devuelve blob: — antes se bloqueaban silenciosamente.
-     * Sigue rechazando javascript:, data:, file:, etc.
-     */
     safeUrl(url) {
         if (!url) return '';
         try {
@@ -35,11 +23,6 @@ window.Formatters = {
         return '';
     },
 
-    /**
-     * Placeholder local (data URI SVG). No depende de red,
-     * no lo bloquea CSP, no hace fetch adicional.
-     * Se cachea en memoria la primera vez que se genera.
-     */
     _placeholderCache: null,
     placeholderImage() {
         if (this._placeholderCache) return this._placeholderCache;
@@ -59,9 +42,16 @@ window.Formatters = {
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
         const diff = Math.floor((Date.now() - date.getTime()) / 1000);
         if (diff < 60) return 'hace un momento';
-        if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-        if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-        return `hace ${Math.floor(diff / 86400)} días`;
+        if (diff < 3600) {
+            const m = Math.floor(diff / 60);
+            return m === 1 ? 'hace 1 min' : `hace ${m} min`;
+        }
+        if (diff < 86400) {
+            const h = Math.floor(diff / 3600);
+            return h === 1 ? 'hace 1 h' : `hace ${h} h`;
+        }
+        const d = Math.floor(diff / 86400);
+        return d === 1 ? 'hace 1 día' : `hace ${d} días`;
     },
 
     formatPrice(value) {

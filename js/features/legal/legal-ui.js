@@ -1,24 +1,19 @@
 /* =====================================================
    PIPGO · LEGAL UI
-   Modal unificado de Aviso de Privacidad y Términos y
-   Condiciones. Contiene el texto legal embebido para
-   evitar dependencias de red y permitir su lectura offline.
-
-   Conforme a:
-   - LFPDPPP (Ley Federal de Protección de Datos Personales
-     en Posesión de los Particulares, reforma 14-nov-2025).
-   - LFPC (Ley Federal de Protección al Consumidor).
-   - NMX-COE-001-SCFI-2018 (Comercio electrónico).
-   - Lineamientos SEGOB de clasificación de contenido.
-   - Reglas del SAT para plataformas digitales (2026).
+   Modal unificado de Aviso de Privacidad y Términos.
+   -----------------------------------------------------
+   v2.2 (Ronda 5 fixes):
+   - Body lock migrado a BodyLock.acquire/release.
+   - Handler de ESC en capture: si hay un modal de MAYOR
+     z-index abierto, no consumir el ESC (deja que app.js
+     lo procese).
+   - Heredado v2.1 (Ronda 2): FocusTrap + aria-selected.
+   - Heredado v2.0 (F-12): ESC en capture + stopImmediate.
    ===================================================== */
 
 (function () {
     'use strict';
 
-    /* -------------------------------------------------
-       CONSTANTES
-       ------------------------------------------------- */
     const LEGAL_VERSION = '1.0.0';
     const LEGAL_LAST_UPDATE = 'Octubre de 2026';
     const STORAGE_KEY = 'legal_accepted_version';
@@ -35,15 +30,22 @@
         city: 'Emiliano Zapata, Tabasco, México'
     };
 
-    /* -------------------------------------------------
-       ESTADO
-       ------------------------------------------------- */
     let modal, closeBtn, tabsWrap, tabs, bodyEl, titleEl, subtitleEl,
         headerIcon, updatedEl, acceptBtn;
     let initialized = false;
     let currentTab = 'privacy';
     let historyPushed = false;
     let suppressPopstate = false;
+
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
 
     /* =====================================================
        CONTENIDO — AVISO DE PRIVACIDAD
@@ -475,12 +477,12 @@
     function renderTab(tab) {
         currentTab = tab;
 
-        // Actualizar tab activo
         tabs.forEach(t => {
-            t.classList.toggle('active', t.dataset.legalTab === tab);
+            const isActive = t.dataset.legalTab === tab;
+            t.classList.toggle('active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
 
-        // Header dinámico
         if (tab === 'terms') {
             headerIcon.className = 'legal-header-icon variant-terms';
             headerIcon.innerHTML = '<i class="fa-solid fa-file-contract"></i>';
@@ -493,11 +495,9 @@
             subtitleEl.textContent = 'Tratamiento de datos personales';
         }
 
-        // Body
         bodyEl.innerHTML = tab === 'terms' ? buildTermsHtml() : buildPrivacyHtml();
         bodyEl.scrollTop = 0;
 
-        // Footer
         updatedEl.innerHTML =
             `Última actualización: <strong>${LEGAL_LAST_UPDATE}</strong> · v${LEGAL_VERSION}`;
     }
@@ -512,7 +512,13 @@
         renderTab(tab === 'terms' ? 'terms' : 'privacy');
 
         modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+
+        /* Ronda 5: BodyLock.acquire() */
+        _lockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.activate(modal, closeBtn);
+        }
 
         if (!historyPushed) {
             history.pushState(
@@ -527,7 +533,13 @@
     function close(syncHistory = true) {
         if (!modal) return;
         modal.classList.add('hidden');
-        document.body.style.overflow = '';
+
+        /* Ronda 5: BodyLock.release() */
+        _unlockBody();
+
+        if (window.FocusTrap) {
+            FocusTrap.deactivate(modal);
+        }
 
         if (historyPushed) {
             historyPushed = false;
@@ -577,25 +589,35 @@
 
         tabs = modal.querySelectorAll('.legal-tab');
 
-        // Tabs
         tabs.forEach(tab => {
             tab.addEventListener('click', () => renderTab(tab.dataset.legalTab));
         });
 
-        // Cerrar
         if (closeBtn) closeBtn.addEventListener('click', () => close());
         if (acceptBtn) acceptBtn.addEventListener('click', () => close());
         modal.addEventListener('click', (e) => {
             if (e.target === modal) close();
         });
 
-        // ESC
+        /* Ronda 5: ESC en capture. Antes de consumir el ESC,
+           comprobamos si hay un modal de MAYOR z-index abierto
+           (legal está en z-500; solo uno superior podría ser el
+           chat-edit que vive dentro de chat-overlay). Si hay
+           algo superior, NO consumimos y dejamos que app.js lo
+           procese. En la práctica Legal nunca está debajo de
+           otro modal z-500+. */
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isOpen()) {
-                e.preventDefault();
-                close();
-            }
-        });
+            if (e.key !== 'Escape') return;
+            if (!isOpen()) return;
+
+            /* Modales superiores (defensivo) */
+            const editModal = document.getElementById('chat-edit-modal');
+            if (editModal && !editModal.classList.contains('hidden')) return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            close();
+        }, true);
     }
 
     /* =====================================================

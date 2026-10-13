@@ -1,12 +1,9 @@
 /* =====================================================
    PIPGO · APP STATE
    -----------------------------------------------------
-   PLAN D:
-   - resetSession() también limpia currentUser.
-     Antes dependía de que app.js lo hubiera seteado
-     a null antes de llamar a resetSession; si se
-     invocaba desde otro lado, quedaba una sesión
-     "fantasma" en memoria.
+   v2.0:
+   - resetSession() limpia userCity/userCoords/locationPermission
+     para evitar "fantasmas" tras logout (F-17).
    ===================================================== */
 
 window.AppState = {
@@ -60,6 +57,11 @@ window.AppState = {
         this.pendingHomePublications = [];
         this.activeCategoryFilter = '';
         this.currentConversationId = null;
+
+        // F-17: limpiar ubicación "fantasma" tras logout.
+        this.userCity = null;
+        this.userCoords = null;
+        this.locationPermission = null;
 
         if (window.SellerProfileService && SellerProfileService.clearCache) {
             try { SellerProfileService.clearCache(); } catch (e) {}

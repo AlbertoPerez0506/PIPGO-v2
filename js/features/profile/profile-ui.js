@@ -1,12 +1,15 @@
 /* =====================================================
    PIPGO · PROFILE UI
    Perfil + Ajustes + edición inline de username.
-   Incluye accesos a Aviso de Privacidad y Términos.
-   Incluye pestaña "Siguiendo" completamente funcional.
    -----------------------------------------------------
-   PLAN D:
-   - buildCard usa Formatters.placeholderImage() en
-     vez de via.placeholder.com.
+   v2.2 (Ronda 5 fixes):
+   - Settings modal migrado a BodyLock.acquire/release.
+     Se elimina settingsBodyLockPrev local; el conteo
+     anidado del helper global resuelve cualquier stacking.
+   - Heredado v2.1 (Ronda 3): FocusTrap en settings-modal
+     con foco inicial en el botón de cerrar.
+   - Heredado v2.0 (F-16): handleAvatarChange deshabilita el
+     botón de cámara durante la subida y muestra spinner.
    ===================================================== */
 
 (function () {
@@ -18,10 +21,19 @@
     let initialized = false;
 
     let renderToken = 0;
-
     let activeProfileTab = 'own';
 
     let settingsModal, settingsClose;
+
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
 
     /* Refs de edición de username */
     let usernameDisplayWrap, usernameEditWrap, usernameRowButtons,
@@ -424,7 +436,6 @@
         card.className = 'product-card';
         card.dataset.id = pub.id;
 
-        // PLAN D: fallback local, sin red.
         const safeImg = Formatters.safeUrl(pub.mainImage) || Formatters.placeholderImage();
         const isSold = pub.status === 'sold';
 
@@ -717,6 +728,8 @@
         if (e.target.closest('#btn-change-avatar')) {
             e.preventDefault();
             e.stopPropagation();
+            const btn = document.getElementById('btn-change-avatar');
+            if (btn && btn.disabled) return; // F-16
             avatarInput.click();
             return;
         }
@@ -790,6 +803,14 @@
     async function handleAvatarChange() {
         const file = avatarInput.files[0];
         if (!file) return;
+
+        const changeBtn = document.getElementById('btn-change-avatar');
+        if (changeBtn) {
+            changeBtn.disabled = true;
+            changeBtn.dataset.prevIcon = changeBtn.innerHTML;
+            changeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
+
         try {
             Toast.info('Subiendo avatar…');
             const compressed = await ImageService.compressImage(file);
@@ -800,14 +821,26 @@
             Toast.success('Avatar actualizado.');
         } catch (error) {
             Logger.error('Error subiendo avatar', error);
-            Toast.error('No pudimos subir el avatar.');
+            Toast.error(ErrorHandler.toUserMessage(error, { context: 'profile.avatar' }));
         } finally {
             avatarInput.value = '';
+            const btn = document.getElementById('btn-change-avatar');
+            if (btn) {
+                btn.disabled = false;
+                if (btn.dataset.prevIcon) {
+                    btn.innerHTML = btn.dataset.prevIcon;
+                    delete btn.dataset.prevIcon;
+                }
+            }
         }
     }
 
     /* =====================================================
        AJUSTES
+       -----------------------------------------------------
+       Ronda 5: BodyLock.acquire/release en lugar de
+       settingsBodyLockPrev. El conteo anidado del helper
+       global resuelve el stacking.
        ===================================================== */
     function openSettings(profile) {
         const email = profile.email || (AppState.currentUser && AppState.currentUser.email) || '—';
@@ -976,6 +1009,14 @@
         }
 
         settingsModal.classList.remove('hidden');
+
+        /* Ronda 5: BodyLock.acquire() */
+        _lockBody();
+
+        /* v2.1: focus trap con foco inicial en el botón cerrar */
+        if (window.FocusTrap) {
+            FocusTrap.activate(settingsModal, settingsClose);
+        }
     }
 
     /* -----------------------------------------------------
@@ -1134,11 +1175,24 @@
         el.textContent = `${prefix}, ${AppState.currentProfile.username}`;
     }
 
+    /**
+     * Ronda 5: cierra el modal de ajustes liberando BodyLock
+     * y el focus trap. Todos los caminos (botón X, click
+     * backdrop, ESC en app.js) pasan por aquí.
+     */
     function closeSettings() {
         clearTimeout(usernameDebounceTimer);
         usernameDebounceTimer = null;
         lastCheckedNormalized = '';
+
         if (settingsModal) settingsModal.classList.add('hidden');
+
+        /* Ronda 5: BodyLock.release() */
+        _unlockBody();
+
+        if (window.FocusTrap && settingsModal) {
+            FocusTrap.deactivate(settingsModal);
+        }
     }
 
     function isSettingsModalOpen() {

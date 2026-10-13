@@ -1,6 +1,11 @@
 /* =====================================================
    PIPGO · FAVORITE UI
    Just-in-time auth + haptics.
+   -----------------------------------------------------
+   Ronda 2 (revisión): sin cambios.
+   - No abre modales propios → no necesita FocusTrap.
+   - Sus interacciones pasan por AuthUI (ya cubierto).
+   - No hay botones que requieran aria-disabled.
    ===================================================== */
 
 (function () {

@@ -1,22 +1,14 @@
 /* =====================================================
    PIPGO · ERROR HANDLER
-   Traduce errores técnicos a mensajes humanos.
-   Clasifica por código y contexto. Registra internamente.
-   -----------------------------------------------------
-   FIX:
-   - Si el error trae `userMessage` explícito, se respeta.
-   - Si es un error de dominio (sin code, con mensaje corto
-     y humano), se muestra tal cual. Antes se reemplazaba
-     por "Ocurrió un error inesperado" aunque el mensaje
-     fuera perfectamente claro ("Este vendedor no está
-     disponible.", "Ya sigues a este vendedor.", etc.).
-   - `classifyFirebaseError` ya no marca códigos no-Firebase
-     como DATABASE_ERROR; ahora devuelve null y deja pasar
-     al flujo general (que respeta MESSAGES[error.code] si
-     existe, o el mensaje crudo si es humano).
+   v2.0:
+   - Errores esperados (códigos conocidos, mensajes de
+     dominio) bajan a Logger.warn — dejan de inundar la
+     consola con [ERROR] por cosas normales (F-22).
+   - Los UNKNOWN_ERROR reales siguen siendo Logger.error.
    ===================================================== */
 
 (function () {
+    'use strict';
 
     const MESSAGES = {
         NETWORK_OFFLINE: 'No pudimos conectarnos a Internet. Revisa tu conexión e inténtalo nuevamente.',
@@ -36,12 +28,6 @@
         UNKNOWN_ERROR: 'Ocurrió un error inesperado. Inténtalo nuevamente.'
     };
 
-    /**
-     * Traduce códigos de Firebase a nuestros códigos.
-     * Devuelve `null` si el código no es de Firebase — así
-     * permitimos códigos de dominio sin que caigan en
-     * DATABASE_ERROR por accidente.
-     */
     function classifyFirebaseError(error) {
         const code = error && error.code;
         if (!code || typeof code !== 'string') return null;
@@ -61,8 +47,6 @@
         if (error.code && typeof error.code === 'string') {
             const fb = classifyFirebaseError(error);
             if (fb) return fb;
-            // Código de dominio propio (ej. 'NOT_A_SELLER') que
-            // tengamos registrado en MESSAGES.
             if (MESSAGES[error.code]) return error.code;
         }
 
@@ -72,41 +56,19 @@
         return 'UNKNOWN_ERROR';
     }
 
-    /**
-     * ¿Parece un mensaje "humano" listo para mostrar al usuario?
-     * Heurística: descarta mensajes técnicos de JS, stacks y URLs
-     * con puerto (que delatan errores de red internos).
-     */
     function looksHuman(error) {
         if (!error || typeof error.message !== 'string') return false;
         const msg = error.message;
         if (msg.length === 0 || msg.length > 250) return false;
-
-        // Prefijos típicos de errores internos del motor JS
-        if (/^(TypeError|ReferenceError|SyntaxError|RangeError|EvalError|URIError|Uncaught)\b/i.test(msg)) {
-            return false;
-        }
-        // Mensajes técnicos clásicos
+        if (/^(TypeError|ReferenceError|SyntaxError|RangeError|EvalError|URIError|Uncaught)\b/i.test(msg)) return false;
         if (/\bCannot (read|set) (property|properties|of)/i.test(msg)) return false;
         if (/\b(is not a function|is not defined|is undefined|null is not an object)\b/i.test(msg)) return false;
-        // Stack trace incrustado
         if (/\n\s+at\s+/.test(msg)) return false;
-        // URLs internas con puerto (localhost:5500, etc.)
         if (/https?:\/\/[^\s]+:\d+/.test(msg)) return false;
-
         return true;
     }
 
     window.ErrorHandler = {
-        /**
-         * Clasifica, registra y devuelve un mensaje de usuario.
-         * Prioridad:
-         *   1. fallbackMessage explícito.
-         *   2. error.userMessage explícito.
-         *   3. error.message si parece humano.
-         *   4. MESSAGES[code] (código conocido).
-         *   5. MESSAGES.UNKNOWN_ERROR.
-         */
         toUserMessage(error, { context = 'app', fallbackMessage } = {}) {
             const code = classify(error);
 
@@ -121,24 +83,22 @@
                 userMessage = MESSAGES[code] || MESSAGES.UNKNOWN_ERROR;
             }
 
-            // Log interno (nunca mostrado al usuario)
-            Logger.error(`[${context}] code=${code}`, {
+            // F-22: solo los UNKNOWN reales se loguean como error.
+            const logArgs = [{
                 message: error && error.message,
                 stack: error && error.stack,
                 originalCode: error && error.code
-            });
+            }];
+            if (code === 'UNKNOWN_ERROR') {
+                Logger.error(`[${context}] code=${code}`, ...logArgs);
+            } else {
+                Logger.warn(`[${context}] code=${code}`, ...logArgs);
+            }
 
             return userMessage;
         },
 
-        /**
-         * Clasifica sin mostrar. Útil para lógica condicional.
-         */
         classify,
-
-        /**
-         * Mensajes base accesibles si otro módulo los necesita.
-         */
         MESSAGES
     };
 })();

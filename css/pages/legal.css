@@ -1,5 +1,6 @@
 /* =====================================================
-   PIPGO · LEGAL (Aviso de Privacidad + Términos)
+   PIPGO · LEGAL v3.0
+   Aviso de Privacidad + Términos y Condiciones.
    Estilos del modal legal, tipografía de documentos,
    checkbox de aceptación y badges de versión.
    ===================================================== */
@@ -35,48 +36,72 @@
     text-align: center;
     flex-shrink: 0;
 }
+
 .legal-header::before {
     content: '';
     position: absolute;
-    top: -70px; right: -70px;
-    width: 180px; height: 180px;
+    top: -70px;
+    right: -70px;
+    width: 180px;
+    height: 180px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(45,166,87,0.13) 0%, rgba(45,166,87,0) 70%);
+    background: radial-gradient(circle, rgba(45, 166, 87, 0.13) 0%, rgba(45, 166, 87, 0) 70%);
     pointer-events: none;
 }
 
 .legal-close {
     position: absolute;
-    top: 14px; right: 14px;
-    width: 36px; height: 36px;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.9);
+    background: rgba(255, 255, 255, 0.9);
     border: none;
     color: var(--text-secondary);
     font-size: 14px;
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     z-index: 3;
-    transition: transform var(--duration-fast), background var(--duration-fast);
+    touch-action: manipulation;
+    transition:
+        transform  var(--duration-fast),
+        background var(--duration-fast);
 }
-.legal-close:active { transform: scale(0.9); background: var(--bg); }
+
+.legal-close:active {
+    transform: scale(0.9);
+    background: var(--bg);
+}
+
+.legal-close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
 
 .legal-header-icon {
     position: relative;
-    width: 58px; height: 58px;
+    width: 58px;
+    height: 58px;
     margin: 0 auto 12px;
     border-radius: 18px;
     background: linear-gradient(135deg, #2DA657 0%, #238C45 100%);
-    color: #fff;
+    color: #FFFFFF;
     font-size: 24px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 12px 26px rgba(45,166,87,0.28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 26px rgba(45, 166, 87, 0.28);
     transition: background var(--duration-fast) var(--ease-smooth);
 }
+
 .legal-header-icon.variant-terms {
     background: linear-gradient(135deg, #A65F37 0%, #8A4C2A 100%);
-    box-shadow: 0 12px 26px rgba(166,95,55,0.28);
+    box-shadow: 0 12px 26px rgba(166, 95, 55, 0.28);
 }
+
 .legal-header-icon.variant-privacy {
     background: linear-gradient(135deg, #2DA657 0%, #238C45 100%);
 }
@@ -84,17 +109,18 @@
 .legal-header-title {
     position: relative;
     font-size: 20px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
     letter-spacing: -0.4px;
     color: var(--text-primary);
     margin: 0 0 4px;
 }
+
 .legal-header-subtitle {
     position: relative;
     font-size: 12px;
     color: var(--text-secondary);
     margin: 0;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 }
 
 /* ---------- Tabs ---------- */
@@ -109,6 +135,7 @@
     position: relative;
     top: 12px;
 }
+
 .legal-tabs.hidden { display: none; }
 
 .legal-tab {
@@ -118,7 +145,7 @@
     padding: 10px 8px;
     font-family: inherit;
     font-size: 12.5px;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     color: var(--text-secondary);
     border-radius: 16px;
     cursor: pointer;
@@ -126,14 +153,25 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: all var(--duration-fast) var(--ease-smooth);
     white-space: nowrap;
+    touch-action: manipulation;
+    transition:
+        background var(--duration-fast) var(--ease-smooth),
+        color      var(--duration-fast) var(--ease-smooth),
+        box-shadow var(--duration-fast) var(--ease-smooth);
 }
+
 .legal-tab i { font-size: 11px; }
+
 .legal-tab.active {
     background: var(--surface);
     color: var(--accent-dark);
-    box-shadow: 0 3px 8px rgba(20,25,40,0.08);
+    box-shadow: 0 3px 8px rgba(20, 25, 40, 0.08);
+}
+
+.legal-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 /* ---------- Body (documento) ---------- */
@@ -146,41 +184,50 @@
     color: var(--text-primary);
     font-size: 14px;
     line-height: 1.65;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
-.legal-body::-webkit-scrollbar { display: block; width: 6px; }
+.legal-body::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+}
+
 .legal-body::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
 }
 
+/* ---------- Documento ---------- */
 .legal-doc-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 10px 14px;
     background: var(--accent-light);
     border-radius: 12px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     color: var(--accent-dark);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
 }
+
 .legal-doc-meta i { font-size: 12px; }
 
 .legal-doc h3 {
     font-size: 16px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
     letter-spacing: -0.2px;
     color: var(--text-primary);
     margin: 22px 0 8px;
     padding-top: 4px;
 }
+
 .legal-doc h3:first-child { margin-top: 0; }
 
 .legal-doc h4 {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     color: var(--text-primary);
     margin: 16px 0 6px;
 }
@@ -201,20 +248,35 @@
     font-size: 13.5px;
     line-height: 1.65;
 }
+
 .legal-doc li {
     margin-bottom: 4px;
     padding-left: 2px;
 }
-.legal-doc li strong { color: var(--text-primary); font-weight: 700; }
+
+.legal-doc li strong {
+    color: var(--text-primary);
+    font-weight: var(--weight-bold);
+}
 
 .legal-doc a {
     color: var(--accent-dark);
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     text-decoration: none;
     word-break: break-word;
+    border-radius: 4px;
+    transition: color var(--duration-fast);
 }
-.legal-doc a:active { text-decoration: underline; }
 
+.legal-doc a:active,
+.legal-doc a:hover { text-decoration: underline; }
+
+.legal-doc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ---------- Callout y separadores ---------- */
 .legal-callout {
     background: var(--star-light);
     border-left: 3px solid var(--star);
@@ -222,18 +284,19 @@
     padding: 12px 14px;
     margin: 12px 0;
 }
+
 .legal-callout p {
     margin: 0;
     font-size: 13px;
     color: #78350F;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     text-align: left;
 }
 
 .legal-divider {
     height: 1px;
     background: var(--border-soft);
-    margin: 20px 0;
+    margin: var(--space-5) 0;
     border: none;
 }
 
@@ -244,32 +307,36 @@
     padding: 14px 16px;
     margin: 10px 0;
 }
+
 .legal-contact-box p {
     margin: 4px 0;
     font-size: 13px;
     text-align: left;
 }
+
 .legal-contact-box strong { color: var(--text-primary); }
 
 /* ---------- Footer ---------- */
 .legal-footer {
     flex-shrink: 0;
-    padding: 14px 22px calc(18px + env(safe-area-inset-bottom));
+    padding: 14px 22px calc(18px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border-soft);
     background: var(--surface);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: stretch;
 }
+
 .legal-updated {
     font-size: 11px;
     color: var(--text-tertiary);
     text-align: center;
     margin: 0;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     letter-spacing: 0.2px;
 }
+
 .legal-footer .btn-primary {
     width: 100%;
     padding: 14px 20px;
@@ -277,12 +344,12 @@
 }
 
 /* =====================================================
-   CHECKBOX DE ACEPTACIÓN LEGAL (formulario de registro)
+   CHECKBOX DE ACEPTACIÓN LEGAL (registro)
    ===================================================== */
 .auth-legal-check {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: var(--space-2);
     padding: 12px 14px;
     background: var(--surface-secondary);
     border: 1.5px solid var(--border-soft);
@@ -293,10 +360,19 @@
     line-height: 1.5;
     color: var(--text-secondary);
     user-select: none;
-    transition: border-color var(--duration-fast), background var(--duration-fast);
     margin-top: 4px;
+    transition:
+        border-color var(--duration-fast),
+        background   var(--duration-fast);
 }
+
 .auth-legal-check:active { background: var(--bg); }
+
+.auth-legal-check:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45, 166, 87, 0.12);
+}
+
 .auth-legal-check input {
     width: 18px;
     height: 18px;
@@ -305,6 +381,7 @@
     flex-shrink: 0;
     margin-top: 1px;
 }
+
 .auth-legal-check:has(input:checked) {
     border-color: var(--accent-soft);
     background: var(--accent-light);
@@ -322,10 +399,21 @@
     color: var(--accent-dark);
     font-family: inherit;
     font-size: 12.5px;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 2px;
+    border-radius: 3px;
+    transition: color var(--duration-fast);
+}
+
+.auth-legal-check .legal-link:active {
+    color: var(--accent-darker);
+}
+
+.auth-legal-check .legal-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .auth-legal-check.error {
@@ -334,13 +422,21 @@
 }
 
 /* =====================================================
-   BOTONES EN AJUSTES (Perfil → Ajustes → Legal)
+   FILAS LEGALES EN AJUSTES
    ===================================================== */
 .settings-row.legal-row {
     cursor: pointer;
     align-items: center;
+    touch-action: manipulation;
 }
+
 .settings-row.legal-row:active { background: var(--bg); }
+
+.settings-row.legal-row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 12px;
+}
 
 .settings-row.legal-row .s-text {
     display: flex;
@@ -359,7 +455,7 @@
 
 .settings-row.legal-row .s-value {
     font-size: 13.5px;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -375,10 +471,11 @@
     background: var(--accent-light);
     color: var(--accent-dark);
     font-size: 10px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
     letter-spacing: 0.3px;
     text-transform: uppercase;
 }
+
 .legal-badge-version i { font-size: 9px; }
 
 /* =====================================================
@@ -389,10 +486,18 @@
     .legal-header-icon { width: 52px; height: 52px; font-size: 20px; border-radius: 16px; }
     .legal-header-title { font-size: 18px; }
     .legal-body { padding: 26px 18px 20px; }
-    .legal-footer { padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); }
+    .legal-footer { padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
     .legal-tabs { margin: 0 14px; }
 }
 
 @media (min-width: 640px) {
     .legal-body { padding: 34px 32px 28px; }
+}
+
+/* =====================================================
+   REDUCED MOTION
+   ===================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .legal-modal-pro { animation: none !important; }
+    .legal-body { scroll-behavior: auto !important; }
 }

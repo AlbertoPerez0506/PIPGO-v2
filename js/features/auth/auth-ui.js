@@ -2,6 +2,15 @@
    PIPGO · AUTH UI
    Login + Registro + Recuperar contraseña.
    Incluye aceptación legal obligatoria en el registro.
+   -----------------------------------------------------
+   v3.3 (Ronda 5 fixes):
+   - Body lock migrado a BodyLock.acquire/release con
+     conteo anidado. Resuelve el bug: "abrir Auth sobre
+     Product Sheet y cerrar Auth dejaba el sheet con body
+     scrolleable".
+   - aria-busy en el <form> durante submit (mejor para
+     lectores de pantalla que solo aria-disabled en el botón).
+   - Heredado v3.2: FocusTrap con foco inicial por vista.
    ===================================================== */
 
 (function () {
@@ -16,6 +25,16 @@
     let recoverEmailInput;
     let initialized = false;
 
+    /* ---------- body lock helpers (Ronda 5) ---------- */
+    function _lockBody() {
+        if (window.BodyLock) BodyLock.acquire();
+        else document.body.style.overflow = 'hidden';
+    }
+    function _unlockBody() {
+        if (window.BodyLock) BodyLock.release();
+        else document.body.style.overflow = '';
+    }
+
     /* ---------- UI helpers ---------- */
     function setHeroVariant(variant) {
         heroIcon.classList.remove('variant-register', 'variant-recover');
@@ -23,15 +42,15 @@
         else if (variant === 'recover') heroIcon.classList.add('variant-recover');
 
         if (variant === 'login') {
-            heroIcon.innerHTML = '<i class="fa-solid fa-store"></i>';
+            heroIcon.innerHTML = '<i class="fa-solid fa-store" aria-hidden="true"></i>';
             heroTitle.textContent = 'Bienvenido a PipGo';
             heroSubtitle.textContent = 'Compra y vende cerca de ti';
         } else if (variant === 'register') {
-            heroIcon.innerHTML = '<i class="fa-solid fa-user-plus"></i>';
+            heroIcon.innerHTML = '<i class="fa-solid fa-user-plus" aria-hidden="true"></i>';
             heroTitle.textContent = 'Crea tu cuenta';
             heroSubtitle.textContent = 'Encuentra productos cerca de ti';
         } else if (variant === 'recover') {
-            heroIcon.innerHTML = '<i class="fa-solid fa-key"></i>';
+            heroIcon.innerHTML = '<i class="fa-solid fa-key" aria-hidden="true"></i>';
             heroTitle.textContent = 'Recuperar contraseña';
             heroSubtitle.textContent = 'Un administrador revisará tu solicitud';
         }
@@ -47,7 +66,7 @@
         authSuccess.classList.add('hidden');
         authSuccess.innerHTML = '';
         authError.innerHTML = message
-            ? `<i class="fa-solid fa-circle-exclamation"></i> <span>${escapeHtml(message)}</span>`
+            ? `<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span>${escapeHtml(message)}</span>`
             : '';
         authError.classList.toggle('hidden', !message);
         if (message) {
@@ -61,7 +80,7 @@
         authError.classList.add('hidden');
         authError.innerHTML = '';
         authSuccess.innerHTML = message
-            ? `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`
+            ? `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> <span>${message}</span>`
             : '';
         authSuccess.classList.toggle('hidden', !message);
         if (message) {
@@ -80,18 +99,19 @@
 
     function setButtonLoading(btn, loading) {
         if (!btn) return;
+        const form = btn.closest('form');
         if (loading) {
-            if (!btn.dataset.originalHtml) {
-                btn.dataset.originalHtml = btn.innerHTML;
-            }
+            if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando…';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Procesando…';
+            if (form) form.setAttribute('aria-busy', 'true');
         } else {
             btn.disabled = false;
             if (btn.dataset.originalHtml) {
                 btn.innerHTML = btn.dataset.originalHtml;
                 delete btn.dataset.originalHtml;
             }
+            if (form) form.removeAttribute('aria-busy');
         }
     }
 
@@ -100,10 +120,19 @@
         if (registerLegalWrap) registerLegalWrap.classList.remove('error');
     }
 
+    function syncAuthTabs(mode) {
+        if (!authTabs) return;
+        authTabs.forEach(tab => {
+            const isActive = tab.dataset.auth === mode;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+    }
+
     /* ---------- Vistas ---------- */
     function showLoginView() {
         authTabsWrap.classList.remove('hidden');
-        authTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.auth === 'login'));
+        syncAuthTabs('login');
         loginForm.classList.remove('hidden');
         registerForm.classList.add('hidden');
         recoverView.classList.add('hidden');
@@ -114,7 +143,7 @@
 
     function showRegisterView() {
         authTabsWrap.classList.remove('hidden');
-        authTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.auth === 'register'));
+        syncAuthTabs('register');
         loginForm.classList.add('hidden');
         registerForm.classList.remove('hidden');
         recoverView.classList.add('hidden');
@@ -125,6 +154,7 @@
 
     function showRecoverView() {
         authTabsWrap.classList.add('hidden');
+        syncAuthTabs('');
         loginForm.classList.add('hidden');
         registerForm.classList.add('hidden');
         recoverView.classList.remove('hidden');
@@ -141,19 +171,33 @@
     /* ---------- Modal ---------- */
     function openAuthModal(mode = 'login') {
         authModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        _lockBody();  /* Ronda 5: BodyLock.acquire() */
+
         if (mode === 'register') showRegisterView();
         else if (mode === 'recover') showRecoverView();
         else showLoginView();
+
+        /* v3.2: focus trap con foco inicial en el primer input del form activo */
+        if (window.FocusTrap) {
+            let initial = null;
+            if (mode === 'register')      initial = registerUsernameInput;
+            else if (mode === 'recover')  initial = recoverEmailInput;
+            else                          initial = loginEmailInput;
+            FocusTrap.activate(authModal, initial);
+        }
     }
 
     function closeAuthModal() {
         authModal.classList.add('hidden');
-        document.body.style.overflow = '';
+        _unlockBody();  /* Ronda 5: BodyLock.release() */
+
         clearMessages();
         if (loginPasswordInput) loginPasswordInput.value = '';
         if (registerPasswordInput) registerPasswordInput.value = '';
         resetLegalCheckbox();
+
+        /* v3.2: liberar focus trap */
+        if (window.FocusTrap) FocusTrap.deactivate(authModal);
     }
 
     function waitForAuthState(timeoutMs) {
@@ -178,7 +222,6 @@
         const password = registerPasswordInput.value;
         clearMessages();
 
-        // Validar aceptación legal ANTES de enviar
         if (registerLegalWrap) registerLegalWrap.classList.remove('error');
         if (!registerAcceptLegal || !registerAcceptLegal.checked) {
             if (registerLegalWrap) registerLegalWrap.classList.add('error');
@@ -191,7 +234,6 @@
         try {
             await AuthService.register({ username, email, password });
 
-            // Marcar la versión legal aceptada
             if (window.LegalUI) LegalUI.markAccepted();
 
             await waitForAuthState(2500);
@@ -200,9 +242,7 @@
 
             setTimeout(() => {
                 try {
-                    if (window.ProfileUI && ProfileUI.renderProfile) {
-                        ProfileUI.renderProfile();
-                    }
+                    if (window.ProfileUI && ProfileUI.renderProfile) ProfileUI.renderProfile();
                 } catch (err) {
                     Logger.error('renderProfile post-registro falló', err);
                 }
@@ -232,9 +272,7 @@
 
             setTimeout(() => {
                 try {
-                    if (window.ProfileUI && ProfileUI.renderProfile) {
-                        ProfileUI.renderProfile();
-                    }
+                    if (window.ProfileUI && ProfileUI.renderProfile) ProfileUI.renderProfile();
                 } catch (err) {
                     Logger.error('renderProfile post-login falló', err);
                 }
@@ -339,7 +377,6 @@
             btn.addEventListener('click', () => handleTogglePassword(btn));
         });
 
-        // Enlaces legales dentro del formulario de registro
         document.querySelectorAll('.legal-link[data-legal-open]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();

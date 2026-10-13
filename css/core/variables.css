@@ -1,72 +1,132 @@
 /* =====================================================
    PIPGO · VARIABLES CSS
-   Design tokens: colores, sombras, radios, dimensiones
+   Design tokens v3.1 — Mobile-first, fluid, pro
+   -----------------------------------------------------
+   Identidad cromática conservada:
+     #F2F2F2   gris claro
+     #A65F37   café
+     #F2911B   naranja principal
+     #F2BE5C   amarillo cálido
+     #2DA657   verde
+
+   Jerarquía cromática:
+     · Verde      → acciones principales
+     · Naranja    → marca, precios, acentos cálidos
+     · Café       → elementos secundarios, categorías
+     · Amarillo   → horarios, avisos suaves
+     · Grises     → fondos, bordes, textos
+
+   CAMBIOS v3.1:
+   - Jerarquía z-index corregida: modales, toasts y banner
+     de conectividad AHORA están por encima del chat,
+     seller-profile y lightbox. Antes, ConfirmDialog dentro
+     del chat quedaba oculto detrás (z-modal 150 < z-chat 250).
+   - --text-tertiary subido a #767676 para cumplir WCAG AA
+     (contraste 4.5:1 sobre blanco). Antes #9E9E9E daba 2.7:1.
    ===================================================== */
 
 :root {
-    /* Paleta cromática */
+    /* ---------- Fondos y superficies ---------- */
     --bg: #F2F2F2;
     --surface: #FFFFFF;
     --surface-secondary: #F7F7F7;
     --surface-alt: #FAFAFB;
+    --surface-elevated: #FFFFFF;
+
+    /* ---------- Texto ---------- */
     --text-primary: #1A1A1A;
     --text-secondary: #5F5F5F;
-    --text-tertiary: #9E9E9E;
+    --text-tertiary: #767676;  /* v3.1: antes #9E9E9E — WCAG AA */
+    --text-inverse: #FFFFFF;
+
+    /* ---------- Bordes ---------- */
     --border: #E0E0E0;
     --border-soft: #ECECEF;
+    --border-strong: #D4D4D8;
 
-    /* Acento cálido (precios, destacados) */
+    /* ---------- Naranja principal (marca) ---------- */
     --primary: #F2911B;
     --primary-dark: #D97F0F;
+    --primary-darker: #B86A0B;
     --primary-light: #FFF0E0;
+    --primary-soft: #FDE2C2;
 
-    /* Acción principal PipGo (verde) */
+    /* ---------- Verde (acción principal) ---------- */
     --accent: #2DA657;
     --accent-dark: #238C45;
+    --accent-darker: #1E7A3B;
     --accent-light: #E8F5E9;
     --accent-soft: #D3EEDB;
 
-    /* Identidad PipGo (café) */
+    /* ---------- Café (secundario) ---------- */
     --coffee: #A65F37;
     --coffee-dark: #8A4C2A;
+    --coffee-darker: #6E3B20;
     --coffee-light: #F5EDE6;
+    --coffee-soft: #EBDCCF;
 
-    /* Acento suave */
+    /* ---------- Amarillo cálido (horarios) ---------- */
     --star: #F2BE5C;
+    --star-dark: #D9A43F;
     --star-light: #FFF6E0;
+    --star-soft: #FBEBCB;
 
-    /* Estados semánticos */
+    /* ---------- Estados del sistema ---------- */
+    --danger: #B91C1C;
     --danger-bg: #FEE2E2;
     --danger-fg: #B91C1C;
     --danger-soft: #FCA5A5;
+    --danger-dark: #991B1B;
 
     --success: #16A34A;
     --success-bg: #DCFCE7;
+    --success-fg: #15803D;
+    --success-soft: #A7E8C4;
 
     --warning: #D97706;
     --warning-bg: #FEF3C7;
+    --warning-fg: #92400E;
+    --warning-soft: #FCD34D;
+
+    --info: #1F2937;
+    --info-bg: #E5E7EB;
 
     --toast-bg: #1F2937;
 
-    /* Sombras */
-    --shadow-xs: 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-sm: 0 4px 12px rgba(0,0,0,0.06);
-    --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
-    --shadow-lg: 0 16px 40px rgba(0,0,0,0.12);
-    --shadow-xl: 0 24px 60px rgba(0,0,0,0.16);
+    /* ---------- WhatsApp ---------- */
+    --wa-green: #25D366;
+    --wa-green-dark: #128C7E;
+    --wa-bg: #E7F9EF;
+    --wa-bg-soft: #D2F3E0;
+    --wa-border: #A7E8C4;
+    --wa-text: #0F7A3D;
+
+    /* ---------- Sombras ---------- */
+    --shadow-xs: 0 1px 3px rgba(20, 25, 40, 0.04);
+    --shadow-sm: 0 4px 12px rgba(20, 25, 40, 0.06);
+    --shadow-md: 0 8px 24px rgba(20, 25, 40, 0.08);
+    --shadow-lg: 0 16px 40px rgba(20, 25, 40, 0.12);
+    --shadow-xl: 0 24px 60px rgba(20, 25, 40, 0.16);
+
+    --shadow-accent:       0 10px 25px rgba(45, 166, 87, 0.28);
+    --shadow-accent-sm:    0 4px 12px rgba(45, 166, 87, 0.20);
+    --shadow-primary:      0 10px 25px rgba(242, 145, 27, 0.28);
+    --shadow-danger:       0 10px 25px rgba(185, 28, 28, 0.28);
 
     --nav-shadow:
-        0 12px 32px rgba(20,25,40,0.10),
-        0 4px 12px rgba(20,25,40,0.05);
+        0 12px 32px rgba(20, 25, 40, 0.10),
+        0 4px 12px rgba(20, 25, 40, 0.05);
 
     --fab-shadow:
-        0 14px 30px rgba(45,166,87,0.42),
-        0 6px 14px rgba(45,166,87,0.26);
-    --fab-shadow-pressed:
-        0 8px 18px rgba(45,166,87,0.34),
-        0 4px 10px rgba(45,166,87,0.20);
+        0 14px 30px rgba(45, 166, 87, 0.42),
+        0 6px 14px rgba(45, 166, 87, 0.26);
 
-    /* Radios */
+    --fab-shadow-pressed:
+        0 8px 18px rgba(45, 166, 87, 0.34),
+        0 4px 10px rgba(45, 166, 87, 0.20);
+
+    /* ---------- Radios ---------- */
+    --radius-xs: 6px;
     --radius-sm: 10px;
     --radius-md: 16px;
     --radius-lg: 22px;
@@ -74,25 +134,115 @@
     --radius-2xl: 36px;
     --radius-full: 9999px;
 
-    /* Dimensiones base */
-    --sheet-max-width: 480px;
+    /* ---------- Espaciado (escala 4pt) ---------- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
 
-    /* Bottom Navigation flotante */
+    /* ---------- Layout ---------- */
+    --app-max-width: 480px;
+    --app-max-width-tablet: 680px;
+    --app-max-width-desktop: 520px;
+
+    --sheet-max-width: 480px;
     --bottom-nav-height: 64px;
     --bottom-nav-radius: 32px;
     --bottom-nav-max-width: 420px;
     --bottom-nav-gutter: 16px;
     --bottom-nav-bottom-gap: 10px;
+
     --fab-size: 56px;
     --fab-gap: 10px;
     --fab-offset: -18px;
 
-    /* Transiciones */
-    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* ---------- Transiciones ---------- */
+    --ease-smooth:   cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-    --duration-fast: 0.25s;
-    --duration-base: 0.4s;
-    --duration-slow: 0.6s;
-    --duration-tap: 180ms;
+    --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+
+    --duration-instant: 0.12s;
+    --duration-fast:    0.22s;
+    --duration-base:    0.35s;
+    --duration-slow:    0.5s;
+    --duration-tap:     0.18s;
+
+    /* ---------- Tipografía fluida ---------- */
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
+                 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --text-2xs:  clamp(0.625rem, 0.6rem + 0.15vw, 0.6875rem);  /* 10 → 11 */
+    --text-xs:   clamp(0.6875rem, 0.65rem + 0.2vw, 0.75rem);   /* 11 → 12 */
+    --text-sm:   clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);    /* 12 → 14 */
+    --text-base: clamp(0.875rem, 0.85rem + 0.15vw, 0.9375rem); /* 14 → 15 */
+    --text-lg:   clamp(1rem, 0.95rem + 0.25vw, 1.125rem);      /* 16 → 18 */
+    --text-xl:   clamp(1.125rem, 1.05rem + 0.4vw, 1.375rem);   /* 18 → 22 */
+    --text-2xl:  clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem);     /* 22 → 28 */
+    --text-3xl:  clamp(1.75rem, 1.5rem + 1.2vw, 2.25rem);      /* 28 → 36 */
+
+    --leading-tight:   1.15;
+    --leading-snug:    1.3;
+    --leading-normal:  1.5;
+    --leading-relaxed: 1.65;
+
+    --weight-regular:   400;
+    --weight-medium:    500;
+    --weight-semibold:  600;
+    --weight-bold:      700;
+    --weight-extrabold: 800;
+
+    /* ---------- Foco accesible ---------- */
+    --focus-ring-color:  rgba(45, 166, 87, 0.35);
+    --focus-ring-width:  3px;
+    --focus-ring-offset: 2px;
+    --focus-ring:         0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+    --focus-ring-primary: 0 0 0 var(--focus-ring-width) rgba(242, 145, 27, 0.35);
+    --focus-ring-danger:  0 0 0 var(--focus-ring-width) rgba(185, 28, 28, 0.30);
+
+    /* ---------- Z-index (jerarquía documentada v3.1) ----------
+       Regla: cuanto más arriba en esta lista, más "en primer plano".
+       Un elemento abierto DESDE otro debe tener z-index SUPERIOR.
+
+       Cadenas típicas:
+         home → product sheet (100) → chat (250) → ConfirmDialog (500) → toast (600)
+         home → product sheet (100) → seller profile (260) → AuthModal (500) → toast (600)
+         home → product sheet (100) → lightbox (300) → toast (600)
+
+       NOTA: --z-edit-modal es un valor legacy (ya no se usa;
+       .chat-edit-modal lleva 2500 inline en index.html). Se
+       mantiene por compatibilidad histórica.                    */
+    --z-base:            1;
+    --z-sticky:         10;
+    --z-nav:            50;
+    --z-sheet:         100;
+    --z-chat:          250;
+    --z-seller-profile: 260;
+    --z-lightbox:      300;
+    --z-modal:         500;   /* v3.1: antes 150 — modales sobre overlays */
+    --z-context-menu:  550;   /* v3.1: antes 310 — menú sobre modal */
+    --z-toast:         600;   /* v3.1: antes 200 — toasts siempre visibles */
+    --z-connectivity:  650;   /* v3.1: antes 400 — banner offline sobre todo */
+    --z-edit-modal:    700;   /* Ronda 5: sub-modal dentro del chat-overlay.
+                                 Como el padre (--z-chat 250) crea su propio
+                                 stacking context, este valor solo compite
+                                 dentro del chat, no contra --z-modal (500). */
+    --z-splash:       9999;
+
+    /* ---------- Áreas táctiles ---------- */
+    --touch-target-min:   44px;
+    --touch-target-comfy: 48px;
+
+    /* ---------- Breakpoints de referencia ---------- */
+    --bp-xs:  360px;   /* Samsung A57, Poco X4 Pro, Honor X8 */
+    --bp-sm:  390px;   /* iPhone 13+ */
+    --bp-md:  414px;   /* iPhone Plus */
+    --bp-lg:  768px;   /* iPad mini, Galaxy Tab A */
+    --bp-xl: 1024px;   /* iPad Air, Galaxy Tab S */
+    --bp-2xl:1280px;   /* Desktop */
 }
