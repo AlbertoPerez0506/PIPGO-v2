@@ -1,17 +1,43 @@
 /* =====================================================
-   PIPGO · ABOUT (Nosotros) v1.1
+   PIPGO · ABOUT (Nosotros) v1.2
    Sección "Detrás de PipGo hay una historia".
    Mobile-first · Estilo editorial · Fotografía protagonista.
    -----------------------------------------------------
-   v1.1 (fix):
-   - .about-photo-frame ahora tiene dimensiones absolutas.
-   - La clase .loaded se aplica al frame y oculta el
-     placeholder también desde el propio frame.
+   v1.2:
+   - Eliminada la etiqueta "Recuerdo XX" del carrusel.
+   - Reveal on scroll con IntersectionObserver.
+   - Fade-in de fotos al cargar.
+   - Pulso sutil del dot activo.
+   - Hover lift en tarjetas (solo dispositivos con mouse).
+   - Flotación sutil del icono de cierre.
    ===================================================== */
 
 /* ---------- Contenedor general ---------- */
 .about {
     padding-bottom: var(--space-10);
+}
+
+/* =====================================================
+   REVEAL ON SCROLL
+   -----------------------------------------------------
+   La clase .about-reveal arranca invisible y desplazada.
+   Al entrar al viewport, IntersectionObserver añade
+   .is-visible y se anima con la transición definida.
+   El retardo entre elementos se controla con
+   --about-delay (opcional, por inline style).
+   ===================================================== */
+.about-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+        opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--about-delay, 0ms);
+}
+
+.about-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* =====================================================
@@ -127,7 +153,6 @@
     max-width: 42ch;
 }
 
-/* Detalle semilla */
 .about-seed {
     display: inline-flex;
     align-items: center;
@@ -226,6 +251,15 @@
     outline-offset: 3px;
 }
 
+/* Hover lift solo en dispositivos con mouse */
+@media (hover: hover) and (pointer: fine) {
+    .about-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 36px rgba(20, 25, 40, 0.10),
+                    0 2px 6px rgba(20, 25, 40, 0.05);
+    }
+}
+
 .about-card-photo {
     position: relative;
     aspect-ratio: 4 / 3;
@@ -241,25 +275,8 @@
     transition: transform var(--duration-slow) var(--ease-smooth);
 }
 
-.about-card:hover .about-card-photo img { transform: scale(1.03); }
-
-/* Etiqueta tipo polaroid */
-.about-card-tag {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--text-primary);
-    padding: 5px 10px;
-    border-radius: 10px;
-    font-size: 10.5px;
-    font-weight: var(--weight-extrabold);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(20, 25, 40, 0.06);
-    z-index: 1;
+@media (hover: hover) and (pointer: fine) {
+    .about-card:hover .about-card-photo img { transform: scale(1.04); }
 }
 
 .about-card-body {
@@ -302,6 +319,17 @@
     object-position: center 25%;
     display: block;
     border-radius: inherit;
+    /* Fade-in al cargar (el .loaded se añade desde JS) */
+    opacity: 0;
+    transform: scale(1.03);
+    transition:
+        opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.about-photo-frame.loaded .about-photo-img {
+    opacity: 1;
+    transform: scale(1);
 }
 
 /* ---------- Placeholder de foto (elegante) ---------- */
@@ -342,9 +370,7 @@
     line-height: 1.3;
 }
 
-/* Ocultar placeholder cuando la imagen carga.
-   Aceptamos .loaded tanto en el frame como en el padre,
-   para que sea robusto sin importar quién lo aplique. */
+/* Ocultar placeholder cuando la imagen carga. */
 .about-photo-frame.loaded .about-photo-placeholder,
 .about-card-photo.loaded .about-photo-placeholder,
 .about-team-photo.loaded .about-photo-placeholder,
@@ -388,6 +414,12 @@
     width: 22px;
     border-radius: 4px;
     background: linear-gradient(90deg, #2DA657 0%, #F2911B 100%);
+    animation: aboutDotPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes aboutDotPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(45, 166, 87, 0.35); }
+    50%      { box-shadow: 0 0 0 5px rgba(45, 166, 87, 0); }
 }
 
 .about-nav-btns {
@@ -601,7 +633,8 @@
     box-shadow: 0 10px 24px rgba(20, 25, 40, 0.12),
                 0 1px 3px rgba(20, 25, 40, 0.06);
     touch-action: manipulation;
-    transition: transform var(--duration-fast) var(--ease-smooth);
+    transition: transform var(--duration-fast) var(--ease-smooth),
+                box-shadow var(--duration-fast) var(--ease-smooth);
 }
 
 .about-levelup-frame:active { transform: scale(0.99); }
@@ -659,6 +692,15 @@
     box-shadow: 0 10px 28px rgba(20, 25, 40, 0.08),
                 0 1px 3px rgba(20, 25, 40, 0.04);
     border: 1px solid var(--border-soft);
+    transition: box-shadow var(--duration-fast) var(--ease-smooth);
+}
+
+/* Hover lift solo en dispositivos con mouse */
+@media (hover: hover) and (pointer: fine) {
+    .about-team-card:hover {
+        box-shadow: 0 18px 40px rgba(20, 25, 40, 0.10),
+                    0 2px 6px rgba(20, 25, 40, 0.05);
+    }
 }
 
 .about-team-photo {
@@ -679,7 +721,9 @@
     transition: transform var(--duration-slow) var(--ease-smooth);
 }
 
-.about-team-card:hover .about-team-photo img { transform: scale(1.03); }
+@media (hover: hover) and (pointer: fine) {
+    .about-team-card:hover .about-team-photo img { transform: scale(1.04); }
+}
 
 .about-team-photo:focus-visible {
     outline: 2px solid var(--accent);
@@ -798,6 +842,12 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 12px 26px rgba(45, 166, 87, 0.28);
+    animation: aboutHeartFloat 4s ease-in-out infinite;
+}
+
+@keyframes aboutHeartFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
 }
 
 .about-closing-message {
@@ -933,6 +983,11 @@
         margin: 0 auto;
     }
 
+    /* Stagger en grid de 2 columnas: la tarjeta par aparece 120ms después */
+    .about-team-list .about-team-card.about-reveal:nth-child(even) {
+        transition-delay: calc(var(--about-delay, 0ms) + 120ms);
+    }
+
     .about-closing { margin-left: var(--space-8); margin-right: var(--space-8); }
 }
 
@@ -952,15 +1007,43 @@
 
 /* =====================================================
    REDUCED MOTION
+   -----------------------------------------------------
+   Desactiva animaciones decorativas y deja el contenido
+   accesible sin esperas ni movimientos.
    ===================================================== */
 @media (prefers-reduced-motion: reduce) {
+    .about-reveal {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .about-photo-frame .about-photo-img {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .about-dot.active,
+    .about-closing-icon,
+    .about-lightbox {
+        animation: none !important;
+    }
+
     .about-card,
     .about-card-photo img,
     .about-levelup-frame,
     .about-team-photo img,
-    .about-lightbox {
+    .about-team-card {
         animation: none !important;
         transition: none !important;
+    }
+
+    .about-card:hover,
+    .about-team-card:hover,
+    .about-card:hover .about-card-photo img,
+    .about-team-card:hover .about-team-photo img {
+        transform: none !important;
     }
 }
 

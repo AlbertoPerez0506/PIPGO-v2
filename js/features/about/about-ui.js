@@ -4,10 +4,11 @@
    Sección "Detrás de PipGo hay una historia".
    Carga 100% estática: no lee Firestore ni servicios.
    -----------------------------------------------------
-   v1.4:
-   - TEAM reordenado por rol Scrum:
-     Product Owner → Scrum Master → Equipo de Desarrollo
-     (Dev → UX/UI → Contenido → Marketing).
+   v1.5:
+   - Eliminada la etiqueta "Recuerdo XX" del carrusel.
+   - Añadido reveal on scroll con IntersectionObserver.
+   - Fade-in de fotos al cargarse.
+   - Hover lift (solo punteros con mouse).
    ===================================================== */
 
 (function () {
@@ -32,12 +33,7 @@
             src: 'assets/about/team/nosotros-03.webp',
             date: 'Primeros avances',
             caption: 'Presentación del proyecto.'
-        },
-        // {
-        //     src: 'assets/about/team/nosotros-04.webp',
-        //     date: 'Momentos universitarios',
-        //     caption: 'Aprendizajes que dejaron huella en nuestro camino.'
-        // }
+        }
     ];
 
     const CHAPTERS = [
@@ -93,15 +89,14 @@
         }
     ];
 
-    /* Invitación de Level Up  */
+    /* Invitación de Level Up */
     const LEVEL_UP = {
         src: 'assets/about/PipGo_ Tecnología que impulsa lo local.webp',
         date: '27 ago 2026',
         caption: 'Invitación oficial de Level Up Digital · UT del Usumacinta.'
     };
 
-    /* Asesora académica — aparece al final de la sección del equipo
-       con un estilo visual propio (tema café). */
+    /* Asesora académica — estilo visual propio (tema café). */
     const ADVISOR = {
         name: 'Anery Suárez Vázquez',
         role: 'Asesora académica',
@@ -112,10 +107,7 @@
     };
 
     /* Team ordenado por rol Scrum:
-       1. Product Owner
-       2. Scrum Master
-       3. Equipo de Desarrollo (Dev → UX/UI → Contenido → Marketing)
-       Correos provisionales — cámbialos aquí cuando tengas los reales. */
+       Product Owner → Scrum Master → Equipo de Desarrollo */
     const TEAM = [
         {
             name: 'Vanessa Paola García Rosario',
@@ -182,6 +174,7 @@
     let rootEl = null;
     let lightboxEl = null;
     let lastFocusBeforeLightbox = null;
+    let revealObserver = null;
 
     /* =====================================================
        3) HELPERS
@@ -252,9 +245,7 @@
                 img.src = _swapExtension(src, candidates[idx]);
             } else {
                 frame.classList.add('error');
-                // Nota: no logueamos en consola porque faltar fotos es
-                // algo esperado durante el desarrollo. El placeholder
-                // ya indica visualmente que falta esa imagen.
+                // Sin log: faltar fotos durante desarrollo es esperado.
             }
         });
 
@@ -267,7 +258,6 @@
     /* ---------- Helpers de extensión ---------- */
 
     function _extensionCandidates(src) {
-        // Reducido a 3 variantes para evitar ruido en consola.
         const m = /\.(webp|jpe?g|png)$/i.exec(src);
         const original = m ? m[1].toLowerCase() : 'webp';
         const order = ['webp', 'jpg', 'png'];
@@ -283,6 +273,41 @@
     function _currentCandidateIndex(val) {
         const n = parseInt(val, 10);
         return isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    /* ---------- Reveal on scroll ---------- */
+    function setupRevealObserver() {
+        if (!rootEl) return;
+
+        // Salida temprana: si no hay soporte, mostrar todo
+        if (!('IntersectionObserver' in window)) {
+            rootEl.querySelectorAll('.about-reveal').forEach(node => {
+                node.classList.add('is-visible');
+            });
+            return;
+        }
+
+        // Si ya existe, desconectar el anterior
+        if (revealObserver) {
+            try { revealObserver.disconnect(); } catch (e) {}
+            revealObserver = null;
+        }
+
+        revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.08,
+            rootMargin: '0px 0px -40px 0px'
+        });
+
+        rootEl.querySelectorAll('.about-reveal').forEach(node => {
+            revealObserver.observe(node);
+        });
     }
 
     /* =====================================================
@@ -331,7 +356,7 @@
     function renderMemoriesCarousel() {
         const section = el(`
             <section class="about-section" aria-labelledby="about-memories-title">
-                <div class="about-section-head">
+                <div class="about-section-head about-reveal">
                     <h2 id="about-memories-title">Nuestros primeros capítulos</h2>
                     <p>
                         Antes de que PipGo llegara a ser lo que es hoy, hubo ideas,
@@ -340,11 +365,11 @@
                     </p>
                 </div>
 
-                <div class="about-carousel">
+                <div class="about-carousel about-reveal" style="--about-delay: 80ms;">
                     <div class="about-carousel-track" role="list"></div>
                 </div>
 
-                <div class="about-carousel-foot">
+                <div class="about-carousel-foot about-reveal" style="--about-delay: 160ms;">
                     <div class="about-dots" role="tablist" aria-label="Posición del carrusel"></div>
                     <div class="about-nav-btns">
                         <button class="about-nav-btn" type="button" data-nav="prev" aria-label="Foto anterior">
@@ -378,9 +403,6 @@
             });
             frame.classList.add('about-card-photo-inner');
             photoWrap.appendChild(frame);
-
-            const tag = el(`<span class="about-card-tag">Recuerdo ${String(index + 1).padStart(2, '0')}</span>`);
-            photoWrap.appendChild(tag);
 
             const openLightbox = () => openAboutLightbox(mem.src, mem.caption);
             card.addEventListener('click', openLightbox);
@@ -454,7 +476,7 @@
     function renderTimeline() {
         const section = el(`
             <section class="about-section" aria-labelledby="about-timeline-title">
-                <div class="about-section-head">
+                <div class="about-section-head about-reveal">
                     <h2 id="about-timeline-title">La historia de PipGo</h2>
                     <p>
                         Cuatro capítulos que resumen cómo pasamos de imaginar un
@@ -467,7 +489,7 @@
 
         const tl = section.querySelector('.about-timeline');
 
-        CHAPTERS.forEach(ch => {
+        CHAPTERS.forEach((ch, index) => {
             const paragraphsHtml = ch.paragraphs.map(p => `<p>${p}</p>`).join('');
             const quoteHtml = ch.quote
                 ? `<p class="about-chapter-quote">“${escapeHtml(ch.quote)}”</p>`
@@ -478,7 +500,8 @@
                 : '';
 
             const chapter = el(`
-                <article class="about-chapter">
+                <article class="about-chapter about-reveal"
+                         style="--about-delay: ${Math.min(index * 60, 180)}ms;">
                     <div class="about-chapter-meta">
                         <span class="about-chapter-num">${escapeHtml(ch.num)}</span>
                         ${dateHtml}
@@ -496,7 +519,7 @@
 
     function renderLevelUp() {
         const section = el(`
-            <section class="about-levelup" aria-labelledby="about-levelup-title">
+            <section class="about-levelup about-reveal" aria-labelledby="about-levelup-title">
                 <span class="about-levelup-eyebrow">
                     <i class="fa-solid fa-star" aria-hidden="true"></i>
                     Recuerdo especial
@@ -544,9 +567,14 @@
     }
 
     /* ---------- Constructor de tarjeta de integrante ---------- */
-    function buildTeamCard(member, { isAdvisor = false } = {}) {
+    function buildTeamCard(member, { isAdvisor = false, index = 0 } = {}) {
+        // Stagger: pequeño offset en tablets (2 columnas).
+        // En mobile no importa porque cada card entra sola al viewport.
+        const delay = Math.min(index * 50, 240);
+
         const card = el(`
-            <article class="about-team-card${isAdvisor ? ' is-advisor' : ''}">
+            <article class="about-team-card about-reveal${isAdvisor ? ' is-advisor' : ''}"
+                     style="--about-delay: ${delay}ms;">
                 <div class="about-team-photo" tabindex="0" role="button"
                      aria-label="Ampliar fotografía de ${escapeHtml(member.name)}"></div>
                 <div class="about-team-body">
@@ -587,7 +615,7 @@
     function renderTeam() {
         const section = el(`
             <section class="about-section" aria-labelledby="about-team-title">
-                <div class="about-section-head">
+                <div class="about-section-head about-reveal">
                     <h2 id="about-team-title">Las personas detrás del proyecto</h2>
                     <p>
                         PipGo es el resultado de distintas habilidades, perspectivas
@@ -602,19 +630,22 @@
         const list = section.querySelector('.about-team-list');
 
         // Equipo en orden Scrum: PO → SM → Equipo de Desarrollo
-        TEAM.forEach(member => {
-            list.appendChild(buildTeamCard(member));
+        TEAM.forEach((member, i) => {
+            list.appendChild(buildTeamCard(member, { index: i }));
         });
 
         // Al final, la asesora con estilo propio
-        list.appendChild(buildTeamCard(ADVISOR, { isAdvisor: true }));
+        list.appendChild(buildTeamCard(ADVISOR, {
+            isAdvisor: true,
+            index: TEAM.length
+        }));
 
         return section;
     }
 
     function renderClosing() {
         return el(`
-            <section class="about-closing" aria-label="Mensaje de cierre">
+            <section class="about-closing about-reveal" aria-label="Mensaje de cierre">
                 <div class="about-closing-icon">
                     <i class="fa-solid fa-heart" aria-hidden="true"></i>
                 </div>
@@ -722,7 +753,18 @@
        7) CICLO DE VIDA
        ===================================================== */
     function onEnter() {
-        // Nada que recargar: la sección es estática.
+        // La sección es estática. Si el observer ya reveló
+        // elementos, permanecen visibles. Si por algún motivo
+        // no se disparó (por ejemplo, re-entrada), red de seguridad:
+        if (revealObserver) {
+            rootEl.querySelectorAll('.about-reveal:not(.is-visible)').forEach(node => {
+                // Si el elemento ya está en pantalla, marcarlo visible.
+                const rect = node.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    node.classList.add('is-visible');
+                }
+            });
+        }
     }
 
     function onLeave() {
@@ -756,6 +798,7 @@
 
         lightboxEl = buildLightbox();
         render();
+        setupRevealObserver();
 
         document.addEventListener('keydown', handleKeydown, true);
     }
