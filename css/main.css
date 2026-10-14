@@ -20,6 +20,7 @@
     10. pages/admin.css        → panel admin
     11. pages/messaging.css    → inbox + chat + emoji picker
     12. pages/seller-profile.css → sheet público del vendedor
+    13. pages/about.css        → página sobre nosotros
 
    NOTA: legal.css se carga aparte desde index.html (después de
    este archivo) porque solo se usa en contextos específicos
@@ -48,3 +49,4 @@
 @import url('./pages/admin.css');
 @import url('./pages/messaging.css');
 @import url('./pages/seller-profile.css');
+@import url('./pages/about.css');

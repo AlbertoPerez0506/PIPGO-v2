@@ -91,7 +91,8 @@
             ['AdminUI',       () => AdminUI.init()],
             ['SellerProfileUI', () => SellerProfileUI.init()],
             ['MessagingUI',   () => MessagingUI.init()],
-            ['LegalUI',       () => LegalUI.init()]
+            ['LegalUI',       () => LegalUI.init()],
+            ['AboutUI',       () => AboutUI.init()]   // ← AÑADIR
         ];
 
         features.forEach(([name, initFn]) => {

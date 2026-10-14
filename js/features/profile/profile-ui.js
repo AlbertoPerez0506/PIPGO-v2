@@ -2,7 +2,11 @@
    PIPGO · PROFILE UI
    Perfil + Ajustes + edición inline de username.
    -----------------------------------------------------
-   v2.2 (Ronda 5 fixes):
+   v2.3 (Ronda 6 — vista "Nosotros"):
+   - Ajustes incluye acceso directo a la vista "Nosotros"
+     (settings-open-about) que cierra el modal y navega.
+
+   Heredado v2.2 (Ronda 5 fixes):
    - Settings modal migrado a BodyLock.acquire/release.
      Se elimina settingsBodyLockPrev local; el conteo
      anidado del helper global resuelve cualquier stacking.
@@ -841,6 +845,7 @@
        Ronda 5: BodyLock.acquire/release en lugar de
        settingsBodyLockPrev. El conteo anidado del helper
        global resuelve el stacking.
+       Ronda 6: acceso directo a "Nosotros".
        ===================================================== */
     function openSettings(profile) {
         const email = profile.email || (AppState.currentUser && AppState.currentUser.email) || '—';
@@ -904,6 +909,20 @@
                             <span class="s-label">Cuenta</span>
                             <span class="s-value">${PermissionService.getSellerStatus() === 'approved' ? 'Vendedor aprobado' : 'Activa'}</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <span class="settings-group-title">Información</span>
+                <div class="settings-group-card">
+                    <div class="settings-row legal-row" id="settings-open-about" role="button" tabindex="0">
+                        <div class="s-icon tone-warm"><i class="fa-solid fa-seedling"></i></div>
+                        <div class="s-text">
+                            <span class="s-label">Nosotros</span>
+                            <span class="s-value">La historia detrás de PipGo</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right settings-arrow"></i>
                     </div>
                 </div>
             </div>
@@ -981,6 +1000,7 @@
 
         const openPrivacy = document.getElementById('settings-open-privacy');
         const openTerms = document.getElementById('settings-open-terms');
+        const openAbout = document.getElementById('settings-open-about');
 
         const launchLegal = (tab) => {
             closeSettings();
@@ -1004,6 +1024,19 @@
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     launchLegal('terms');
+                }
+            });
+        }
+        if (openAbout) {
+            const launchAbout = () => {
+                closeSettings();
+                setTimeout(() => NavigationUI.switchView('about'), 180);
+            };
+            openAbout.addEventListener('click', launchAbout);
+            openAbout.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    launchAbout();
                 }
             });
         }

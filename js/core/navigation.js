@@ -1,5 +1,10 @@
 /* =====================================================
    PIPGO · NAVIGATION
+   v2.1: vista "Nosotros" (About):
+        - Hook AboutUI.onEnter / onLeave en switchView().
+        - AboutUI.isLightboxOpen() atendido por ESC/back
+          y por closeAllOverlays().
+
    v2.0: guardas `window.X` en switchView (F-13).
    Si un feature no cargó (por red, error de sintaxis, etc.),
    la navegación sigue funcionando sin reventar.
@@ -49,6 +54,9 @@
         if (leavingHome && window.PublicationUI && PublicationUI.onLeaveHome) {
             PublicationUI.onLeaveHome();
         }
+        if (previousView === 'about' && window.AboutUI && AboutUI.onLeave) {
+            AboutUI.onLeave();
+        }
         if (enteringHome) {
             if (window.PipGoHomeHeader) window.PipGoHomeHeader.reset();
             if (window.PublicationUI && PublicationUI.onEnterHome) PublicationUI.onEnterHome();
@@ -72,6 +80,9 @@
         if (viewName === 'messaging' && window.MessagingUI && MessagingUI.onEnterMessaging) {
             MessagingUI.onEnterMessaging();
         }
+        if (viewName === 'about' && window.AboutUI && AboutUI.onEnter) {
+            AboutUI.onEnter();
+        }
 
         if (push) {
             const last = navigationStack[navigationStack.length - 1];
@@ -90,6 +101,10 @@
     }
 
     function closeAllOverlays() {
+        if (window.AboutUI && AboutUI.isLightboxOpen && AboutUI.isLightboxOpen()) {
+            AboutUI.closeLightbox();
+            return true;
+        }
         if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { LegalUI.close(true); return true; }
         if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { MessagingUI.closeChat(); return true; }
         if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { SellerProfileUI.close(); return true; }
@@ -110,6 +125,11 @@
     }
 
     function onBackButton(e) {
+        if (window.AboutUI && AboutUI.isLightboxOpen && AboutUI.isLightboxOpen()) {
+            if (e) e.preventDefault();
+            AboutUI.closeLightbox();
+            return;
+        }
         if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { e.preventDefault(); LegalUI.close(); return; }
         if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { e.preventDefault(); SellerProfileUI.close(); return; }
         if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { e.preventDefault(); MessagingUI.closeChat(); return; }
@@ -143,6 +163,7 @@
         if (window.SellerProfileUI && SellerProfileUI.consumeSuppressPopstate && SellerProfileUI.consumeSuppressPopstate()) return;
         if (window.LegalUI && LegalUI.consumeSuppressPopstate && LegalUI.consumeSuppressPopstate()) return;
 
+        if (window.AboutUI && AboutUI.isLightboxOpen && AboutUI.isLightboxOpen()) { AboutUI.closeLightbox(); return; }
         if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) { LegalUI.close(false); return; }
         if (window.SellerProfileUI && SellerProfileUI.isOpen && SellerProfileUI.isOpen()) { SellerProfileUI.close(false); return; }
         if (window.MessagingUI && MessagingUI.isChatOpen && MessagingUI.isChatOpen()) { MessagingUI.closeChat(false); return; }
