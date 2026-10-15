@@ -114,7 +114,7 @@
             role: 'Product Owner',
             roleIcon: 'fa-compass',
             description: 'Contribuye a definir la visión del producto, priorizar necesidades y orientar el desarrollo hacia los objetivos del proyecto.',
-            email: 'vanessa.paola.garcia.rosario@pipgo.app',
+            email: 'vp069314@gmail.com',
             photo: 'assets/about/vanessa-paola-garcia-rosario.webp'
         },
         {
@@ -122,7 +122,7 @@
             role: 'Scrum Master',
             roleIcon: 'fa-list-check',
             description: 'Coordina la organización del equipo, facilita la colaboración y promueve el seguimiento del trabajo mediante la metodología Scrum.',
-            email: 'ariadna.ixchel.diaz.pina@pipgo.app',
+            email: 'ixchelaridp.03@gmail.com',
             photo: 'assets/about/ariadna-ixchel-diaz-pina.webp'
         },
         {
@@ -130,7 +130,7 @@
             role: 'Programador / Desarrollador',
             roleIcon: 'fa-code',
             description: 'Participa en la construcción técnica de PipGo mediante el desarrollo de funcionalidades, integraciones y mejoras de la plataforma.',
-            email: 'ivan.alberto.perez.ramirez@pipgo.app',
+            email: 'ivanalbertoperezramirez@gmail.com',
             photo: 'assets/about/ivan-alberto-perez-ramirez.webp'
         },
         {
@@ -138,7 +138,7 @@
             role: 'Diseñadora UX/UI',
             roleIcon: 'fa-pen-nib',
             description: 'Colabora en el diseño de interfaces y en la experiencia de usuario, procurando que la aplicación sea clara, intuitiva y funcional.',
-            email: 'anett.michelle.zacarias.sandoval@pipgo.app',
+            email: 'anettsandovalz@gmail.com',
             photo: 'assets/about/anett-michelle-zacarias-sandoval.webp'
         },
         {
@@ -146,7 +146,7 @@
             role: 'Diseñadora UX/UI',
             roleIcon: 'fa-pen-nib',
             description: 'Participa en el desarrollo visual de PipGo y en la construcción de una experiencia de interacción coherente y agradable.',
-            email: 'ayelen.lakeisha.perez.martinez@pipgo.app',
+            email: 'martinezayelenlakesha@gmail.com',
             photo: 'assets/about/ayelen-lakeisha-perez-martinez.webp'
         },
         {
@@ -162,7 +162,7 @@
             role: 'Marketing / Audiovisual',
             roleIcon: 'fa-bullhorn',
             description: 'Contribuye a la comunicación visual, la producción de materiales audiovisuales y la difusión del proyecto.',
-            email: 'ronay.arturo.garcia.hernandez@pipgo.app',
+            email: 'ronaygarcia560@gmail.com',
             photo: 'assets/about/ronay-arturo-garcia-hernandez.webp'
         }
     ];
