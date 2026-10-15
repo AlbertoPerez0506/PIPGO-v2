@@ -154,7 +154,7 @@
             role: 'Estrategia de Contenido y Educación',
             roleIcon: 'fa-book-open',
             description: 'Contribuye a la planificación de contenidos y a la comunicación de información útil para los usuarios.',
-            email: 'cristell.guadalupe.jimenez.jimenez@pipgo.app',
+            email: 'jimenezcris205@gmail.com',
             photo: 'assets/about/cristell-guadalupe-jimenez-jimenez.webp'
         },
         {
