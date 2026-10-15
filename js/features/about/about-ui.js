@@ -158,7 +158,7 @@
             photo: 'assets/about/cristell-guadalupe-jimenez-jimenez.webp'
         },
         {
-            name: 'Ronay Arturo García Hernández',
+            name: 'Ronay Arturo Hernández García',
             role: 'Marketing / Audiovisual',
             roleIcon: 'fa-bullhorn',
             description: 'Contribuye a la comunicación visual, la producción de materiales audiovisuales y la difusión del proyecto.',
