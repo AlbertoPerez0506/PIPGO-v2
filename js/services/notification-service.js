@@ -1,10 +1,14 @@
 /* =====================================================
    PIPGO · NOTIFICATION SERVICE
    -----------------------------------------------------
-   v1.2 (Ronda 7):
-   - VAPID_KEY configurada con la clave real del proyecto.
-   - enqueueEvent incluye `uid` en el payload (fix de reglas).
-   - Guard defensivo: si no hay usuario autenticado, no encola.
+   v1.3 (Ronda 8):
+   - FIX: eliminado messaging.useServiceWorker() (deprecado /
+     inexistente en firebase-messaging-compat 9+). El SDK
+     detecta automáticamente /firebase-messaging-sw.js.
+   - FIX: init() ahora resetea `initialized = false` si falla,
+     permitiendo reintento en el próximo login.
+   - Se mantiene: VAPID_KEY real, `uid` en payload de cola,
+     guard defensivo si no hay usuario autenticado.
    ===================================================== */
 
 (function () {
@@ -64,7 +68,10 @@
         try {
             await _getSW();
             messaging = firebase.messaging();
-            messaging.useServiceWorker(swRegistration);
+
+            // ⚠️ NO usar messaging.useServiceWorker(): deprecado y
+            // no existe en firebase-messaging-compat 9+. El SDK
+            // detecta automáticamente /firebase-messaging-sw.js.
 
             messaging.onMessage((payload) => {
                 if (typeof onForegroundCallback === 'function') {
@@ -83,6 +90,8 @@
             Logger.info('NotificationService: inicializado');
         } catch (e) {
             Logger.error('NotificationService init', e);
+            // Si falla, permitir reintento en el próximo login:
+            initialized = false;
         }
     }
 

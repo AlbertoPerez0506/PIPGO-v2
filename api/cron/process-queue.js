@@ -20,10 +20,11 @@
    Reglas: solo admin lee/muta. El cron usa Admin SDK
    (bypassa reglas), autenticado por header CRON_SECRET.
 
-   FIX v1.1:
-   - Rutas de require corregidas: este archivo vive en
-     api/cron/, así que los helpers están un nivel arriba
-     (../_firebaseAdmin, ../_notifyHelpers).
+   FIX v1.2:
+   - Autenticación corregida: Vercel Cron manda el secreto
+     en `Authorization: Bearer <CRON_SECRET>`, no en
+     `x-cron-secret`. Se aceptan AMBOS formatos por
+     compatibilidad (por si algún día cambia).
    ===================================================== */
 
 const admin = require('../_firebaseAdmin');
@@ -35,12 +36,24 @@ const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 20;
 
 module.exports = async (req, res) => {
-  // Protección: solo Vercel Cron o llamada con secreto
-  const secret = req.headers['x-cron-secret'];
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  // ---------- AUTENTICACIÓN ----------
+  // Vercel Cron (producción) manda: Authorization: Bearer <CRON_SECRET>
+  // Para pruebas manuales aceptamos también x-cron-secret.
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    console.error('process-queue: CRON_SECRET no configurado en env.');
+    return res.status(500).json({ error: 'Servidor mal configurado' });
+  }
+
+  const authHeader = req.headers['authorization'] || '';
+  const bearer = authHeader.replace(/^Bearer\s+/, '');
+  const legacy = req.headers['x-cron-secret'] || '';
+
+  if (bearer !== expected && legacy !== expected) {
     return res.status(401).json({ error: 'No autorizado' });
   }
 
+  // ---------- PROCESAMIENTO ----------
   try {
     const snap = await db.collection('colaNotificaciones')
       .where('status', '==', 'pending')
@@ -68,7 +81,6 @@ module.exports = async (req, res) => {
             messageId: item.messageId
           });
         } else {
-          // Item malformado: marcamos failed directamente
           await ref.update({
             status: 'failed',
             lastError: 'Item malformado (kind/ids ausentes)',

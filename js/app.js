@@ -1,7 +1,12 @@
 /* =====================================================
    PIPGO · APP BOOTSTRAP
    -----------------------------------------------------
-   v2.6 (Ronda 6 — notificaciones push):
+   v2.7 (Ronda 7 — deep link push):
+   - runPendingAction() añade case 'openNotification':
+     tras login, si había una notificación pendiente,
+     delega en NotificationService.handleDeepLink(target).
+
+   Heredado v2.6 (Ronda 6 — notificaciones push):
    - initializeFeatures() incluye NotificationUI.
    - initializeAuthObserver():
        · al autenticar: await NotificationService.init()
@@ -430,6 +435,13 @@
                         .catch((e) => {
                             Toast.error(ErrorHandler.toUserMessage(e, { context: 'app.pendingFollow' }));
                         });
+                }
+                break;
+
+            /* NUEVO v2.7: deep link desde push notification tras login. */
+            case 'openNotification':
+                if (window.NotificationService && NotificationService.handleDeepLink) {
+                    NotificationService.handleDeepLink(action.target);
                 }
                 break;
         }
