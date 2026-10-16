@@ -2,12 +2,20 @@
    PIPGO · NOTIFICATION UI (Sección "Notificaciones")
    Sistema A: notificaciones persistentes de publicaciones.
    Los mensajes NO aparecen aquí.
+
+   v2.0 (cambio visual):
+   - El badge ya no vive en el bottom-nav. Ahora está
+     en el header (junto al icono de búsqueda).
+   - El botón #home-notifications-btn maneja el click
+     y navega a la vista 'notifications'.
+   - Se añade/quita la clase .has-unread al botón del
+     header para dar feedback visual (campana roja).
    ===================================================== */
 
 (function () {
     'use strict';
 
-    let contentEl, badgeEl;
+    let contentEl, badgeEl, headerBtn;
     let unsubscribe = null;
     let initialized = false;
     let items = [];
@@ -22,6 +30,19 @@
 
         contentEl = document.getElementById('notifications-content');
         badgeEl   = document.getElementById('notifications-badge');
+        headerBtn = document.getElementById('home-notifications-btn');
+
+        /* Nuevo: el botón del header navega a la vista
+           de Notificaciones al hacer click. */
+        if (headerBtn) {
+            headerBtn.addEventListener('click', () => {
+                if (window.NavigationUI && NavigationUI.switchView) {
+                    NavigationUI.switchView('notifications');
+                } else if (window.Logger) {
+                    Logger.warn('NotificationUI: NavigationUI no disponible.');
+                }
+            });
+        }
 
         NotificationService.setForegroundHandler(_onForegroundMessage);
     }
@@ -67,11 +88,14 @@
     function _updateBadge() {
         if (!badgeEl) return;
         const unread = items.filter(i => !i.read).length;
+
         if (unread > 0) {
             badgeEl.textContent = unread > 9 ? '9+' : String(unread);
             badgeEl.classList.remove('hidden');
+            if (headerBtn) headerBtn.classList.add('has-unread');
         } else {
             badgeEl.classList.add('hidden');
+            if (headerBtn) headerBtn.classList.remove('has-unread');
         }
     }
 

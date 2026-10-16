@@ -80,9 +80,15 @@
                                 </button>
                             </div>
                         </div>
-                        <button class="icon-btn" id="home-search-btn" aria-label="Buscar" type="button">
-                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                        </button>
+                        <div class="topbar-actions">
+                            <button class="icon-btn" id="home-notifications-btn" aria-label="Notificaciones" type="button">
+                                <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                                <span class="icon-badge hidden" id="notifications-badge"></span>
+                            </button>
+                            <button class="icon-btn" id="home-search-btn" aria-label="Buscar" type="button">
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="home-hero" id="home-hero">
@@ -1027,10 +1033,6 @@
             <button class="nav-item" data-view="messaging" aria-label="Mensajes" type="button">
                 <i class="fa-solid fa-comments" aria-hidden="true"></i><span>Mensajes</span>
                 <span class="nav-badge hidden" id="messaging-badge"></span>
-            </button>
-            <button class="nav-item" data-view="notifications" aria-label="Notificaciones" type="button">
-                <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notificaciones</span>
-                <span class="nav-badge hidden" id="notifications-badge"></span>
             </button>
             <button class="nav-item" data-view="perfil" aria-label="Perfil" type="button">
                 <i class="fa-solid fa-user" aria-hidden="true"></i><span>Perfil</span>

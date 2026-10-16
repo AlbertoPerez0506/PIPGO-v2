@@ -2,17 +2,124 @@
    PIPGO · NOTIFICACIONES
    -----------------------------------------------------
    Estilos de la vista #view-notifications y del badge
-   del navbar. Reutiliza las clases .msg-* de main.css
-   para las filas, así que aquí solo añadimos:
-     - Badge del navbar (reutilizado por Mensajes también).
-     - Toolbar "Marcar todas como leídas".
-     - Botón de eliminar por fila.
-     - Ajustes finos del avatar/icono de notificación.
+   de notificaciones que ahora vive en el header
+   (junto al icono de búsqueda).
+
+   v2.0:
+   - Badge de notificaciones migrado del bottom-nav al
+     topbar-actions del home-header.
+   - Se mantiene .nav-badge solo para #messaging-badge.
+   - Se eliminó el override del grid de .bottom-nav
+     (ya no hay 6 items, volvemos a 5).
+   - Nuevo .topbar-actions + .icon-btn .icon-badge con
+     animación pop y anillo de contraste.
    ===================================================== */
 
-/* ---------- Badge reutilizable en el bottom-nav ---------- */
+/* =====================================================
+   ACCIONES DEL HEADER (topbar)
+   -----------------------------------------------------
+   Contiene los botones de Notificaciones y Búsqueda
+   alineados a la derecha del topbar.
+   ===================================================== */
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* =====================================================
+   BADGE DE NOTIFICACIONES EN EL HEADER
+   -----------------------------------------------------
+   Va posicionado sobre el icono de la campana. Usa un
+   gradiente rojo, anillo blanco para contraste y una
+   animación pop al aparecer.
+   ===================================================== */
+.icon-btn .icon-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 55%, #B91C1C 100%);
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+    letter-spacing: 0.2px;
+    box-shadow:
+        0 0 0 2.5px var(--surface, #FFFFFF),
+        0 4px 10px rgba(220, 38, 38, 0.42),
+        0 1px 3px rgba(220, 38, 38, 0.28);
+    pointer-events: none;
+    z-index: 3;
+    font-family: var(--font-sans, inherit);
+    font-variant-numeric: tabular-nums;
+    animation: notifBadgePop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+    will-change: transform, box-shadow;
+}
+
+.icon-btn .icon-badge.hidden {
+    display: none;
+}
+
+/* Pulso suave cuando hay notificaciones sin leer */
+.icon-btn .icon-badge:not(.hidden) {
+    animation:
+        notifBadgePop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+        notifBadgeGlow 2.6s ease-in-out 0.5s infinite;
+}
+
+@keyframes notifBadgePop {
+    0%   { transform: scale(0);   opacity: 0; }
+    60%  { transform: scale(1.22); opacity: 1; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes notifBadgeGlow {
+    0%, 100% {
+        box-shadow:
+            0 0 0 2.5px var(--surface, #FFFFFF),
+            0 4px 10px rgba(220, 38, 38, 0.42),
+            0 1px 3px rgba(220, 38, 38, 0.28);
+    }
+    50% {
+        box-shadow:
+            0 0 0 2.5px var(--surface, #FFFFFF),
+            0 4px 16px rgba(220, 38, 38, 0.68),
+            0 1px 3px rgba(220, 38, 38, 0.36);
+    }
+}
+
+/* =====================================================
+   ESTADO "TIENE NOVEDADES" EN EL BOTÓN DEL HEADER
+   -----------------------------------------------------
+   Cuando hay notificaciones sin leer, la campana se
+   tiñe ligeramente del color de marca para dar feedback
+   visual sutil.
+   ===================================================== */
+.icon-btn.has-unread {
+    color: var(--danger-fg, #B91C1C);
+    background: var(--danger-bg, #FEE2E2);
+}
+
+.icon-btn.has-unread:active {
+    background: var(--danger-soft, #FCA5A5);
+    color: #FFFFFF;
+}
+
+/* =====================================================
+   BADGE REUTILIZABLE EN EL BOTTOM-NAV
+   -----------------------------------------------------
+   Solo se usa ya para #messaging-badge. Se mantiene
+   por compatibilidad visual con el sistema anterior.
+   ===================================================== */
 .nav-item {
-    position: relative; /* asegura que el badge se ancle */
+    position: relative;
 }
 
 .nav-badge {
@@ -39,7 +146,9 @@
     display: none;
 }
 
-/* ---------- Toolbar: marcar todas como leídas ---------- */
+/* =====================================================
+   TOOLBAR: marcar todas como leídas
+   ===================================================== */
 .notif-toolbar {
     display: flex;
     justify-content: flex-end;
@@ -72,7 +181,9 @@
     font-size: 12px;
 }
 
-/* ---------- Filas de notificación ---------- */
+/* =====================================================
+   FILAS DE NOTIFICACIÓN
+   ===================================================== */
 .notif-row {
     position: relative;
     align-items: flex-start;
@@ -88,7 +199,6 @@
     color: #fff;
 }
 
-/* Botón de eliminar por fila */
 .notif-delete {
     position: absolute;
     top: 8px;
@@ -117,23 +227,34 @@
     font-size: 12px;
 }
 
-/* ---------- Ajuste responsivo del bottom-nav a 6 items ----------
-   El navbar ahora tiene: Inicio · Buscar · Anunciarme · Mensajes ·
-   Notificaciones · Perfil. Si main.css tenía 5 columnas, se rompía.
-   Forzamos 6 con auto-ajuste y comprimimos un poco las etiquetas.
-   --------------------------------------------------------------- */
-.bottom-nav {
-    grid-template-columns: repeat(6, 1fr) !important;
-}
-
-.bottom-nav .nav-item span:not(.nav-badge) {
-    font-size: 10.5px;
-}
-
-/* En pantallas muy estrechas, ocultamos la etiqueta de
-   Notificaciones para no apretar el layout. */
+/* =====================================================
+   RESPONSIVE · Ajuste fino en pantallas pequeñas
+   -----------------------------------------------------
+   En pantallas estrechas (≤360px) reducimos ligeramente
+   el tamaño del badge para no apretar el header.
+   ===================================================== */
 @media (max-width: 360px) {
-    .bottom-nav .nav-item[data-view="notifications"] span:not(.nav-badge) {
-        display: none;
+    .icon-btn .icon-badge {
+        min-width: 16px;
+        height: 16px;
+        font-size: 9px;
+        line-height: 16px;
+        padding: 0 4px;
+        top: -2px;
+        right: -2px;
+    }
+
+    .topbar-actions {
+        gap: 6px;
+    }
+}
+
+/* =====================================================
+   PREFERENCIA: movimiento reducido
+   ===================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .icon-btn .icon-badge,
+    .icon-btn .icon-badge:not(.hidden) {
+        animation: none !important;
     }
 }
