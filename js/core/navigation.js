@@ -1,9 +1,11 @@
 /* =====================================================
    PIPGO · NAVIGATION
-   v2.1: vista "Nosotros" (About):
-        - Hook AboutUI.onEnter / onLeave en switchView().
-        - AboutUI.isLightboxOpen() atendido por ESC/back
-          y por closeAllOverlays().
+   v2.2: vista "Notificaciones" (Notifications):
+        - Hook NotificationUI.onEnter / onLeave en switchView().
+        - v2.1: vista "Nosotros" (About):
+          - Hook AboutUI.onEnter / onLeave en switchView().
+          - AboutUI.isLightboxOpen() atendido por ESC/back
+            y por closeAllOverlays().
 
    v2.0: guardas `window.X` en switchView (F-13).
    Si un feature no cargó (por red, error de sintaxis, etc.),
@@ -57,6 +59,9 @@
         if (previousView === 'about' && window.AboutUI && AboutUI.onLeave) {
             AboutUI.onLeave();
         }
+        if (previousView === 'notifications' && window.NotificationUI && NotificationUI.onLeave) {
+            NotificationUI.onLeave();
+        }
         if (enteringHome) {
             if (window.PipGoHomeHeader) window.PipGoHomeHeader.reset();
             if (window.PublicationUI && PublicationUI.onEnterHome) PublicationUI.onEnterHome();
@@ -79,6 +84,9 @@
         }
         if (viewName === 'messaging' && window.MessagingUI && MessagingUI.onEnterMessaging) {
             MessagingUI.onEnterMessaging();
+        }
+        if (viewName === 'notifications' && window.NotificationUI && NotificationUI.onEnter) {
+            NotificationUI.onEnter();
         }
         if (viewName === 'about' && window.AboutUI && AboutUI.onEnter) {
             AboutUI.onEnter();

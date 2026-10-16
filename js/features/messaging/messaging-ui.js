@@ -2,13 +2,16 @@
    PIPGO · MESSAGING UI
    Inbox + chat overlay en tiempo real.
    -----------------------------------------------------
-   v3.3 (Ronda 5 fixes):
+   v3.4 (Ronda 6 — notificaciones push):
+   - sendCurrent(): tras MessageService.sendMessage(), se
+     invoca NotificationService.notifyMessageSent(convId,
+     messageId). Best-effort: si falla, se silencia; el
+     mensaje ya quedó enviado y no se interrumpe la UI.
+
+   Heredado v3.3 (Ronda 5 fixes):
    - Body lock migrado a BodyLock.acquire/release
-     (openOverlay + openEditModal). Resuelve el bug del
-     "SellerProfile sobre Chat deja chat con body scrolleable".
-   - Handler ESC capture respeta overlays superiores:
-     si hay SellerProfile, Lightbox, Auth, etc. abierto,
-     NO consume el ESC (deja que app.js lo procese).
+     (openOverlay + openEditModal).
+   - Handler ESC capture respeta overlays superiores.
    - Heredado v3.2 (Ronda 4): AriaDisabled en send/edit +
      FocusTrap en chat-edit-modal.
    ===================================================== */
@@ -103,9 +106,6 @@
     }
 
     /* =====================================================
-       FIX DOBLE TAP
-       ===================================================== */
-       /* =====================================================
        FIX DOBLE TAP + TAP EN MOBILE
        -----------------------------------------------------
        v3.3: Detección híbrida touchend + click.
@@ -183,10 +183,6 @@
         /* ---- Click: desktop o fallback ---- */
         el.addEventListener('click', invoke);
     }
-
-    /* =====================================================
-       EMOJI CATALOG
-       ===================================================== */
 
     /* =====================================================
        EMOJI CATALOG
@@ -1289,6 +1285,11 @@
 
     /* =====================================================
        ENVIAR
+       -----------------------------------------------------
+       Ronda 6: captura el retorno de MessageService.sendMessage
+       ({ messageId }) y notifica a NotificationService para
+       que envíe push al destinatario. Best-effort: si falla,
+       el mensaje ya quedó enviado y no se interrumpe la UI.
        ===================================================== */
     function autoResizeInput() {
         if (!inputEl) return;
@@ -1325,10 +1326,20 @@
         }
 
         try {
-            await MessageService.sendMessage(currentChat.conversationId, {
+            const sendResult = await MessageService.sendMessage(currentChat.conversationId, {
                 senderId: AppState.currentUser.uid,
                 text: check.value
             });
+
+            /* Ronda 6: notificación push al destinatario.
+               Best-effort: si falla, se silencia. */
+            if (window.NotificationService &&
+                NotificationService.notifyMessageSent) {
+                const messageId = (sendResult && sendResult.messageId) || null;
+                NotificationService
+                    .notifyMessageSent(currentChat.conversationId, messageId)
+                    .catch(() => {});
+            }
 
             if (window.HapticsService) HapticsService.light();
 

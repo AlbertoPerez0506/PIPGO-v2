@@ -18,22 +18,10 @@
 
     <title>PipGo</title>
     <!--
-      CSP v3.3 (Ronda 6 fixes):
-
-      - style-src-attr 'unsafe-inline': permite style="" en
-        HTML y element.style.prop = value en JS, SIN permitir
-        bloques <style> inline. Es la directiva CSP Level 3
-        que resuelve los ~30 errores "Applying inline style".
-      - style-src (sin 'unsafe-inline'): bloquea <style>
-        inline en HTML. Todo el CSS vive en archivos externos.
-      - script-src: sigue estricto. Si ves
-        "Executing inline script violates CSP" en dev, es
-        Live Server inyectando su script de auto-reload.
-        En producción (Cordova) no aparece.
-
-      NOTA: en Cordova (protocolo file:// o https://localhost)
-      algunos webviews ignoran este meta. Si rompe algo en
-      dispositivo, muévelo al config.xml o elimínalo.
+      CSP v3.4 (Ronda 7 fixes):
+        - Añadidos endpoints FCM para notificaciones push:
+            https://fcmregistrations.googleapis.com
+            https://fcm.googleapis.com
     -->
    <meta http-equiv="Content-Security-Policy"
       content="default-src 'self';
@@ -42,7 +30,7 @@
                style-src-attr 'unsafe-inline';
                font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
                img-src 'self' data: blob: https:;
-               connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://api.cloudinary.com https://res.cloudinary.com https://nominatim.openstreetmap.org https://maps.googleapis.com https://www.google.com;
+               connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://api.cloudinary.com https://res.cloudinary.com https://nominatim.openstreetmap.org https://maps.googleapis.com https://www.google.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com;
                frame-src 'self' https://*.firebaseapp.com;
                media-src 'self' blob:;
                object-src 'none';
@@ -55,20 +43,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-
-
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js"></script>
 
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pages/legal.css">
-    <!--
-      v3.3: estilos que antes vivían inline en <head>
-      (touch-action + .chat-edit-modal). DEBEN existir en
-      esta ruta o el navegador mostrará un error MIME.
-    -->
-  
+    <link rel="stylesheet" href="css/features/notifications.css">
+
 </head>
 <body>
 
@@ -184,6 +167,16 @@
                     </div>
                 </header>
                 <div id="messaging-content" class="messaging-content"></div>
+            </section>
+
+            <!-- ============ VISTA: NOTIFICACIONES ============ -->
+            <section id="view-notifications" class="view">
+                <header class="messaging-header-pro">
+                    <div class="messaging-header-top">
+                        <h2>Notificaciones</h2>
+                    </div>
+                </header>
+                <div id="notifications-content" class="messaging-content"></div>
             </section>
 
             <!-- ============ VISTA: ANUNCIARME ============ -->
@@ -1033,6 +1026,11 @@
             </button>
             <button class="nav-item" data-view="messaging" aria-label="Mensajes" type="button">
                 <i class="fa-solid fa-comments" aria-hidden="true"></i><span>Mensajes</span>
+                <span class="nav-badge hidden" id="messaging-badge"></span>
+            </button>
+            <button class="nav-item" data-view="notifications" aria-label="Notificaciones" type="button">
+                <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notificaciones</span>
+                <span class="nav-badge hidden" id="notifications-badge"></span>
             </button>
             <button class="nav-item" data-view="perfil" aria-label="Perfil" type="button">
                 <i class="fa-solid fa-user" aria-hidden="true"></i><span>Perfil</span>
@@ -1090,6 +1088,9 @@
 
 <script src="js/services/follow-service.js"></script>
 
+<!-- NUEVO v3.4: servicio de notificaciones push -->
+<script src="js/services/notification-service.js"></script>
+
 <!-- ============ COMPONENTS ============ -->
 <script src="js/components/toast.js"></script>
 <script src="js/components/splash.js"></script>
@@ -1106,6 +1107,9 @@
 
 <script src="js/features/seller-profile/seller-profile-ui.js"></script>
 <script src="js/features/messaging/messaging-ui.js"></script>
+
+<!-- NUEVO v3.4: UI de notificaciones -->
+<script src="js/features/notifications/notification-ui.js"></script>
 
 <script src="js/features/legal/legal-ui.js"></script>
 

@@ -171,6 +171,44 @@ service cloud.firestore {
                       && request.resource.data.publicationId == pubId;
         allow delete: if isOwner(uid);
       }
+
+      // ============================================================
+      // NEW · Subcolección: dispositivos (tokens FCM)
+      // ------------------------------------------------------------
+      // El cliente (dueño) registra y elimina sus propios tokens.
+      // El backend (Admin SDK) los lee y limpia tokens inválidos.
+      // Validamos que el token sea un string razonable para
+      // impedir escrituras basura o inyecciones.
+      // ============================================================
+      match /dispositivos/{tokenId} {
+        allow read:   if isOwner(uid);
+        allow create, update: if isOwner(uid)
+                              && request.resource.data.token is string
+                              && request.resource.data.token.size() >= 40
+                              && request.resource.data.token.size() <= 4096;
+        allow delete: if isOwner(uid);
+      }
+
+      // ============================================================
+      // NEW · Subcolección: notificaciones (persistentes, Sistema A)
+      // ------------------------------------------------------------
+      // Las crea EXCLUSIVAMENTE el backend con Admin SDK (bypassa
+      // reglas). El cliente sólo puede:
+      //   - leer las suyas,
+      //   - marcarlas como leídas (read: true, readAt),
+      //   - eliminarlas.
+      // No puede crear ni modificar otros campos (title, body,
+      // publicationId, idempotencyKey, etc.).
+      // ============================================================
+      match /notificaciones/{notifId} {
+        allow read:   if isOwner(uid);
+        allow create: if false;   // sólo Admin SDK
+        allow update: if isOwner(uid)
+                      && request.resource.data.diff(resource.data)
+                           .affectedKeys().hasOnly(['read', 'readAt'])
+                      && request.resource.data.read == true;
+        allow delete: if isOwner(uid);
+      }
     }
 
     // ============================================================
@@ -310,6 +348,24 @@ service cloud.firestore {
                       || (canAccessConv()
                           && resource.data.expiresAt <= request.time);
       }
+    }
+
+    // ============================================================
+    // NEW · COLA DE NOTIFICACIONES (fallback de envío)
+    // ------------------------------------------------------------
+    // Si el POST del cliente a /api/notify-* falla (red, cierre
+    // de pestaña…), el cliente encola el evento aquí. El cron de
+    // Vercel lo reprocesa. Los eventos SOLO los puede leer/mutar
+    // el admin (vía Admin SDK, que además bypassa las reglas).
+    // ============================================================
+    match /colaNotificaciones/{docId} {
+
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == myUid()
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.attempts == 0;
+
+      allow read, update, delete: if isAdmin();
     }
   }
 }

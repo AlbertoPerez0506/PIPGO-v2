@@ -1,0 +1,139 @@
+/* =====================================================
+   PIPGO · NOTIFICACIONES
+   -----------------------------------------------------
+   Estilos de la vista #view-notifications y del badge
+   del navbar. Reutiliza las clases .msg-* de main.css
+   para las filas, así que aquí solo añadimos:
+     - Badge del navbar (reutilizado por Mensajes también).
+     - Toolbar "Marcar todas como leídas".
+     - Botón de eliminar por fila.
+     - Ajustes finos del avatar/icono de notificación.
+   ===================================================== */
+
+/* ---------- Badge reutilizable en el bottom-nav ---------- */
+.nav-item {
+    position: relative; /* asegura que el badge se ancle */
+}
+
+.nav-badge {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(8px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #e53935;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--surface, #fff);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.nav-badge.hidden {
+    display: none;
+}
+
+/* ---------- Toolbar: marcar todas como leídas ---------- */
+.notif-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 16px 2px;
+}
+
+.notif-mark-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border, #e5e7eb);
+    color: var(--text-secondary, #4b5563);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.notif-mark-all:hover,
+.notif-mark-all:focus-visible {
+    background: var(--surface-2, #f3f4f6);
+    color: var(--text-primary, #111827);
+    outline: none;
+}
+
+.notif-mark-all i {
+    font-size: 12px;
+}
+
+/* ---------- Filas de notificación ---------- */
+.notif-row {
+    position: relative;
+    align-items: flex-start;
+}
+
+.notif-avatar {
+    background: var(--primary-soft, #e8f5e9);
+    color: var(--primary, #2e7d32);
+}
+
+.notif-row.unread .notif-avatar {
+    background: var(--primary, #2e7d32);
+    color: #fff;
+}
+
+/* Botón de eliminar por fila */
+.notif-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary, #9ca3af);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.notif-delete:hover,
+.notif-delete:focus-visible {
+    background: var(--surface-2, #f3f4f6);
+    color: var(--danger-fg, #dc2626);
+    outline: none;
+}
+
+.notif-delete i {
+    font-size: 12px;
+}
+
+/* ---------- Ajuste responsivo del bottom-nav a 6 items ----------
+   El navbar ahora tiene: Inicio · Buscar · Anunciarme · Mensajes ·
+   Notificaciones · Perfil. Si main.css tenía 5 columnas, se rompía.
+   Forzamos 6 con auto-ajuste y comprimimos un poco las etiquetas.
+   --------------------------------------------------------------- */
+.bottom-nav {
+    grid-template-columns: repeat(6, 1fr) !important;
+}
+
+.bottom-nav .nav-item span:not(.nav-badge) {
+    font-size: 10.5px;
+}
+
+/* En pantallas muy estrechas, ocultamos la etiqueta de
+   Notificaciones para no apretar el layout. */
+@media (max-width: 360px) {
+    .bottom-nav .nav-item[data-view="notifications"] span:not(.nav-badge) {
+        display: none;
+    }
+}

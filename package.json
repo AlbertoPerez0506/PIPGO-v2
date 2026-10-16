@@ -1,0 +1,12 @@
+{
+  "name": "pipgo-v2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PipGo - Marketplace local con notificaciones push",
+  "engines": {
+    "node": ">=18.x"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

@@ -1,7 +1,17 @@
 /* =====================================================
    PIPGO · APP BOOTSTRAP
    -----------------------------------------------------
-   v2.5 (Ronda 5 — fixes de bugs reales):
+   v2.6 (Ronda 6 — notificaciones push):
+   - initializeFeatures() incluye NotificationUI.
+   - initializeAuthObserver():
+       · al autenticar: await NotificationService.init()
+         (registra token FCM + foreground handler).
+       · al cerrar sesión: guarda previousUid antes de
+         resetSession() y llama
+         NotificationService.cleanupOnLogout(previousUid)
+         para borrar token FCM y desuscribir listeners.
+
+   Heredado v2.5 (Ronda 5):
    - initGlobalEscapeHandler() reordenado por z-index
      descendente:
        500 → Auth, Admin, Settings, Preview, Filter,
@@ -9,13 +19,11 @@
        300 → Lightbox
        260 → SellerProfile
        100 → ProductSheet
-     Esto corrige el bug donde ESC cerraba el sheet cuando
-     Auth estaba encima.
-   - Ahora también cierra Draft/Unsaved por ESC usando las
-     nuevas APIs de PublicationUI.
-   - BodyLock.reset() en logout sigue como red de seguridad.
-   - Comentario actualizado para reflejar los modales con
-     capture propio (ConfirmDialog, LegalUI, MessagingUI).
+   - Cierra Draft/Unsaved por ESC usando las APIs de
+     PublicationUI.
+   - BodyLock.reset() en logout como red de seguridad.
+   - Comentario actualizado para modales con capture
+     propio (ConfirmDialog, LegalUI, MessagingUI).
 
    Heredado v2.4:
    - window.BodyLock (conteo anidado) disponible global.
@@ -83,16 +91,17 @@
 
     function initializeFeatures() {
         const features = [
-            ['AuthUI',        () => AuthUI.init()],
-            ['ProfileUI',     () => ProfileUI.init()],
-            ['PublicationUI', () => PublicationUI.init()],
-            ['FavoriteUI',    () => FavoriteUI.init()],
-            ['SellerUI',      () => SellerUI.init()],
-            ['AdminUI',       () => AdminUI.init()],
-            ['SellerProfileUI', () => SellerProfileUI.init()],
-            ['MessagingUI',   () => MessagingUI.init()],
-            ['LegalUI',       () => LegalUI.init()],
-            ['AboutUI',       () => AboutUI.init()]   // ← AÑADIR
+            ['AuthUI',           () => AuthUI.init()],
+            ['ProfileUI',        () => ProfileUI.init()],
+            ['PublicationUI',    () => PublicationUI.init()],
+            ['FavoriteUI',       () => FavoriteUI.init()],
+            ['SellerUI',         () => SellerUI.init()],
+            ['AdminUI',          () => AdminUI.init()],
+            ['SellerProfileUI',  () => SellerProfileUI.init()],
+            ['MessagingUI',      () => MessagingUI.init()],
+            ['NotificationUI',   () => NotificationUI.init()],   // ← NUEVO v2.6
+            ['LegalUI',          () => LegalUI.init()],
+            ['AboutUI',          () => AboutUI.init()]
         ];
 
         features.forEach(([name, initFn]) => {
@@ -362,6 +371,8 @@
                         await ProfileUI.renderProfile();
                     } else if (AppState.currentView === 'messaging' && window.MessagingUI) {
                         await MessagingUI.onEnterMessaging();
+                    } else if (AppState.currentView === 'notifications' && window.NotificationUI) {
+                        await NotificationUI.onEnter();
                     }
                 } catch (e) {
                     if (window.Logger) Logger.warn('Pull-to-refresh error', e);
@@ -427,6 +438,8 @@
     function initializeAuthObserver() {
         AuthService.onAuthStateChanged(async (user) => {
             const wasAuthenticated = !!AppState.currentUser;
+            const previousUid = AppState.currentUser ? AppState.currentUser.uid : null;
+
             AppState.currentUser = user;
 
             if (user) {
@@ -452,8 +465,31 @@
                     AppState.currentProfile = null;
                 }
 
+                /* NUEVO v2.6: inicializar servicio de notificaciones
+                   (registrar token FCM + handler de foreground). */
+                try {
+                    if (window.NotificationService && NotificationService.init) {
+                        await NotificationService.init();
+                    }
+                } catch (e) {
+                    Logger.warn('[bootstrap] NotificationService.init falló', e);
+                }
+
                 silentAutoRefreshCity();
             } else {
+                /* NUEVO v2.6: limpiar token FCM del usuario que
+                   acaba de cerrar sesión ANTES de resetear el
+                   estado (necesitamos previousUid). */
+                if (wasAuthenticated && previousUid) {
+                    try {
+                        if (window.NotificationService && NotificationService.cleanupOnLogout) {
+                            await NotificationService.cleanupOnLogout(previousUid);
+                        }
+                    } catch (e) {
+                        Logger.warn('[bootstrap] NotificationService.cleanupOnLogout falló', e);
+                    }
+                }
+
                 AppState.resetSession();
 
                 Storage.remove('user_city_cache');
@@ -478,6 +514,12 @@
             if (AppState.currentView === 'messaging' && window.MessagingUI && MessagingUI.onEnterMessaging) {
                 try { MessagingUI.onEnterMessaging(); } catch (e) {
                     Logger.error('Refresh messaging post-auth falló', e);
+                }
+            }
+
+            if (AppState.currentView === 'notifications' && window.NotificationUI && NotificationUI.onEnter) {
+                try { NotificationUI.onEnter(); } catch (e) {
+                    Logger.error('Refresh notifications post-auth falló', e);
                 }
             }
 

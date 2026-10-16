@@ -2,12 +2,16 @@
    PIPGO · PUBLICATION UI
    Home (realtime), Search, Form, Sheet, Lightbox, etc.
    -----------------------------------------------------
-   v3.3 (Ronda 5 fixes):
+   v3.4 (Ronda 6 — notificaciones push):
+   - handleSubmit: al crear (no editar) una publicación,
+     se invoca NotificationService.notifyPublicationCreated
+     con el id del documento recién creado. Best-effort:
+     si falla, se silencia (no rompe el flujo de publicación).
+
+   Heredado v3.3 (Ronda 5 fixes):
    - Body lock migrado a BodyLock.acquire/release en
      TODOS los modales/overlays (sheet, lightbox, preview,
-     filter, draft, unsaved). Esto resuelve el bug del
-     "Auth sobre Product Sheet deja body scrolleable tras
-     cerrar Auth".
+     filter, draft, unsaved).
    - aria-busy en el form durante submit.
    - API pública añade:
        isDraftModalOpen, closeDraftModal,
@@ -1656,8 +1660,12 @@
     /* =====================================================
        SUBMIT
        -----------------------------------------------------
-       Ronda 5: aria-busy en el form durante submit, además
-       de AriaDisabled en el botón.
+       Ronda 6: al crear (no editar), invoca
+       NotificationService.notifyPublicationCreated(docRef.id)
+       best-effort tras PublicationService.create().
+
+       Heredado Ronda 5: aria-busy en el form durante submit,
+       además de AriaDisabled en el botón.
        ===================================================== */
     async function handleSubmit(e) {
         e.preventDefault();
@@ -1780,8 +1788,16 @@
                 Toast.success('Publicación actualizada.');
             } else {
                 setSubmitButton('Publicando…', 'fa-paper-plane');
-                await PublicationService.create(payload);
+                const docRef = await PublicationService.create(payload);
                 Toast.success('Publicación creada.');
+
+                /* Ronda 6: notificación push a seguidores del vendedor.
+                   Best-effort: si falla, no interrumpe el flujo. */
+                if (window.NotificationService &&
+                    NotificationService.notifyPublicationCreated &&
+                    docRef && docRef.id) {
+                    NotificationService.notifyPublicationCreated(docRef.id).catch(() => {});
+                }
             }
 
             if (window.HapticsService) HapticsService.success();

@@ -40,6 +40,14 @@
         { "fieldPath": "sellerApproved",   "order": "ASCENDING"    },
         { "fieldPath": "usernamePrefixes", "arrayConfig": "CONTAINS" }
       ]
+    },
+    {
+      "collectionGroup": "colaNotificaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
