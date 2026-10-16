@@ -2,13 +2,13 @@
    PIPGO · LEGAL UI
    Modal unificado de Aviso de Privacidad y Términos.
    -----------------------------------------------------
-   v2.2 (Ronda 5 fixes):
+   v2.3 (Ronda 5 fixes):
+   - Eliminado el chequeo de `chat-edit-modal` en el ESC
+     (estaba invertido: edit-modal vive a z-250 efectivo,
+     LegalUI a z-500, siempre gana LegalUI).
    - Body lock migrado a BodyLock.acquire/release.
-   - Handler de ESC en capture: si hay un modal de MAYOR
-     z-index abierto, no consumir el ESC (deja que app.js
-     lo procese).
-   - Heredado v2.1 (Ronda 2): FocusTrap + aria-selected.
-   - Heredado v2.0 (F-12): ESC en capture + stopImmediate.
+   - ESC en capture + stopImmediate.
+   - FocusTrap + aria-selected.
    ===================================================== */
 
 (function () {
@@ -37,7 +37,7 @@
     let historyPushed = false;
     let suppressPopstate = false;
 
-    /* ---------- body lock helpers (Ronda 5) ---------- */
+    /* ---------- body lock helpers ---------- */
     function _lockBody() {
         if (window.BodyLock) BodyLock.acquire();
         else document.body.style.overflow = 'hidden';
@@ -513,7 +513,6 @@
 
         modal.classList.remove('hidden');
 
-        /* Ronda 5: BodyLock.acquire() */
         _lockBody();
 
         if (window.FocusTrap) {
@@ -534,7 +533,6 @@
         if (!modal) return;
         modal.classList.add('hidden');
 
-        /* Ronda 5: BodyLock.release() */
         _unlockBody();
 
         if (window.FocusTrap) {
@@ -599,20 +597,13 @@
             if (e.target === modal) close();
         });
 
-        /* Ronda 5: ESC en capture. Antes de consumir el ESC,
-           comprobamos si hay un modal de MAYOR z-index abierto
-           (legal está en z-500; solo uno superior podría ser el
-           chat-edit que vive dentro de chat-overlay). Si hay
-           algo superior, NO consumimos y dejamos que app.js lo
-           procese. En la práctica Legal nunca está debajo de
-           otro modal z-500+. */
+        /* ESC en capture. LegalUI vive a z-modal (500),
+           por encima de sheet (100), chat (250), seller-profile
+           (260), lightbox (300) y edit-modal (250 efectivo).
+           Nada por debajo tiene prioridad sobre el ESC. */
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (!isOpen()) return;
-
-            /* Modales superiores (defensivo) */
-            const editModal = document.getElementById('chat-edit-modal');
-            if (editModal && !editModal.classList.contains('hidden')) return;
 
             e.preventDefault();
             e.stopImmediatePropagation();

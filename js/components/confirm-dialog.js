@@ -2,15 +2,23 @@
    PIPGO · CONFIRM DIALOG
    Modal de confirmación genérico (promesa).
    -----------------------------------------------------
-   v3.3 (Ronda 5 fixes):
-   - BodyLock.acquire/release. El modal ahora bloquea el
-     scroll del body, consistente con el resto de modales.
-     (Antes no lo hacía: dejaba el body scrollable por
-     detrás del backdrop en desktop.)
-   - Handler ESC capture: si hay un modal de MAYOR
-     z-index abierto (chat-edit-modal), no consumir.
-   - Heredado v3.2: FocusTrap con foco inicial en OK.
-   - Heredado PLAN C: ESC en capture + stopImmediate.
+   v3.4 (Ronda 5 fixes):
+   - Eliminado el chequeo de `chat-edit-modal` en el ESC.
+     Estaba invertido: el edit-modal vive DENTRO de
+     chat-overlay (z-chat 250) y su z-edit-modal solo
+     compite dentro de ese stacking context. Es decir,
+     ConfirmDialog (z-modal 500) SIEMPRE está por encima
+     del edit-modal. Diferir el ESC al edit-modal era
+     incorrecto.
+
+     Ahora ConfirmDialog consume el ESC siempre que esté
+     abierto. Si el edit-modal está también abierto, el
+     ESC cierra el confirm (que es lo correcto por
+     z-index).
+
+   - BodyLock.acquire/release.
+   - FocusTrap con foco inicial en OK.
+   - ESC en capture + stopImmediate.
    ===================================================== */
 
 (function () {
@@ -20,7 +28,7 @@
     let initialized = false;
     let currentResolve = null;
 
-    /* ---------- body lock helpers (Ronda 5) ---------- */
+    /* ---------- body lock helpers ---------- */
     function _lockBody() {
         if (window.BodyLock) BodyLock.acquire();
         else document.body.style.overflow = 'hidden';
@@ -48,14 +56,13 @@
             if (e.target === modal) resolve(false);
         });
 
-        /* Ronda 5: ESC en capture. Antes de consumir,
-           comprobamos si hay un modal superior (chat-edit). */
+        /* ESC en capture. ConfirmDialog vive a z-modal (500),
+           por encima de chat (250), sheet (100), lightbox (300),
+           seller-profile (260) y edit-modal (250 efectivo).
+           Nada por debajo tiene prioridad sobre el ESC. */
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (!modal || modal.classList.contains('hidden')) return;
-
-            const editModal = document.getElementById('chat-edit-modal');
-            if (editModal && !editModal.classList.contains('hidden')) return;
 
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -67,7 +74,7 @@
         if (!currentResolve) return;
         modal.classList.add('hidden');
 
-        _unlockBody();  /* Ronda 5 */
+        _unlockBody();
 
         if (window.FocusTrap) FocusTrap.deactivate(modal);
 
@@ -90,7 +97,6 @@
 
         modal.classList.remove('hidden');
 
-        /* Ronda 5: BodyLock.acquire() */
         _lockBody();
 
         if (window.FocusTrap) FocusTrap.activate(modal, okBtn);

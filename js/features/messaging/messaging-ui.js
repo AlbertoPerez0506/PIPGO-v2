@@ -105,23 +105,88 @@
     /* =====================================================
        FIX DOBLE TAP
        ===================================================== */
+       /* =====================================================
+       FIX DOBLE TAP + TAP EN MOBILE
+       -----------------------------------------------------
+       v3.3: Detección híbrida touchend + click.
+
+       Problema anterior: solo escuchábamos `click`. En
+       mobile el navegador NO dispara `click` si el dedo
+       se movió mínimamente (lo interpreta como scroll).
+       Por eso en PC funcionaba y en celular no.
+
+       Solución:
+       - touchstart/touchend con umbral de 8px. Si el
+         dedo se movió menos → tap legítimo → invocar.
+       - click sigue activo para desktop y como fallback.
+       - Debounce de 350 ms evita doble disparo cuando
+         touchend y click se ejecutan en rápida sucesión.
+       ===================================================== */
     function attachTapHandler(el, handler) {
         el.style.touchAction = 'manipulation';
         el.style.webkitTapHighlightColor = 'transparent';
 
-        let lastTapAt = 0;
+        let lastInvokeAt = 0;
+        const DEBOUNCE_MS = 350;
 
-        el.addEventListener('click', (e) => {
+        function invoke(e) {
             const now = Date.now();
-            if (now - lastTapAt < 400) {
-                e.preventDefault();
-                e.stopPropagation();
-                return;
+            if (now - lastInvokeAt < DEBOUNCE_MS) return;
+            lastInvokeAt = now;
+            try { handler(e); }
+            catch (err) { Logger.error('attachTapHandler', err); }
+        }
+
+        /* ---- Touch: detectar tap real (sin scroll) ---- */
+        let startX = 0, startY = 0, moved = false, tracking = false;
+        const MOVE_THRESHOLD = 8;
+
+        el.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) { tracking = false; return; }
+            tracking = true;
+            moved = false;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, { passive: true });
+
+        el.addEventListener('touchmove', (e) => {
+            if (!tracking || moved) return;
+            const t = e.touches[0];
+            if (!t) return;
+            if (Math.abs(t.clientX - startX) > MOVE_THRESHOLD ||
+                Math.abs(t.clientY - startY) > MOVE_THRESHOLD) {
+                moved = true;
             }
-            lastTapAt = now;
-            handler(e);
-        });
+        }, { passive: true });
+
+        el.addEventListener('touchend', (e) => {
+            if (!tracking) return;
+            tracking = false;
+            if (moved) return;
+
+            const t = e.changedTouches[0];
+            if (!t) return;
+
+            // Asegurar que el dedo terminó DENTRO del elemento
+            const rect = el.getBoundingClientRect();
+            if (t.clientX < rect.left || t.clientX > rect.right ||
+                t.clientY < rect.top  || t.clientY > rect.bottom) return;
+
+            invoke(e);
+        }, { passive: true });
+
+        el.addEventListener('touchcancel', () => {
+            tracking = false;
+            moved = false;
+        }, { passive: true });
+
+        /* ---- Click: desktop o fallback ---- */
+        el.addEventListener('click', invoke);
     }
+
+    /* =====================================================
+       EMOJI CATALOG
+       ===================================================== */
 
     /* =====================================================
        EMOJI CATALOG

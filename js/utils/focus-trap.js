@@ -10,7 +10,15 @@
      hay al menos un modal abierto (accesibilidad + evita
      que Tab escape al fondo).
    - Soporta modales anidados (count > 0 → inert).
-   -----------------------------------------------------
+
+   v1.1 (Ronda 5 fixes):
+   - Los elementos con [aria-disabled="true"] AHORA SÍ
+     entran en el orden de tabulación del trap. Antes se
+     excluían, contradiciendo el propósito del helper
+     AriaDisabled (que quiere botones focusables pero no
+     clickeables). El guard de click sigue en pie y evita
+     cualquier acción sobre ellos.
+
    Uso:
      FocusTrap.activate(modalEl);
      FocusTrap.activate(modalEl, initialFocusEl); // opcional
@@ -20,14 +28,18 @@
 (function () {
     'use strict';
 
-    /* Elementos que pueden recibir foco */
+    /* Elementos que pueden recibir foco.
+       IMPORTANTE: NO excluimos [aria-disabled="true"].
+       Esos botones deben permanecer focusables (screen
+       readers anuncian "atenuado" y el guard de click los
+       neutraliza). */
     const FOCUSABLE_SELECTOR = [
         'a[href]',
         'area[href]',
-        'button:not([disabled]):not([aria-disabled="true"])',
-        'input:not([disabled]):not([type="hidden"]):not([aria-disabled="true"])',
-        'select:not([disabled]):not([aria-disabled="true"])',
-        'textarea:not([disabled]):not([aria-disabled="true"])',
+        'button:not([disabled])',
+        'input:not([disabled]):not([type="hidden"])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
         'iframe',
         'object',
         'embed',
@@ -82,7 +94,10 @@
             if (el.hasAttribute('hidden')) return false;
             if (el.getAttribute('aria-hidden') === 'true') return false;
             if (el.disabled) return false;
-            if (el.getAttribute('aria-disabled') === 'true') return false;
+            /* NOTA: NO filtramos aria-disabled="true".
+               El helper AriaDisabled garantiza que el click
+               no dispare nada. El foco sí debe llegar. */
+
             /* offsetParent null → oculto (display:none, visibility:hidden, etc.)
                excepto si es position:fixed (algunos navegadores devuelven null) */
             if (el.offsetParent === null) {

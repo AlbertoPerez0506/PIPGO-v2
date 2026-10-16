@@ -18,7 +18,19 @@
 
     <title>PipGo</title>
     <!--
-      CSP: refuerza la seguridad en navegador.
+      CSP v3.3 (Ronda 6 fixes):
+
+      - style-src-attr 'unsafe-inline': permite style="" en
+        HTML y element.style.prop = value en JS, SIN permitir
+        bloques <style> inline. Es la directiva CSP Level 3
+        que resuelve los ~30 errores "Applying inline style".
+      - style-src (sin 'unsafe-inline'): bloquea <style>
+        inline en HTML. Todo el CSS vive en archivos externos.
+      - script-src: sigue estricto. Si ves
+        "Executing inline script violates CSP" en dev, es
+        Live Server inyectando su script de auto-reload.
+        En producción (Cordova) no aparece.
+
       NOTA: en Cordova (protocolo file:// o https://localhost)
       algunos webviews ignoran este meta. Si rompe algo en
       dispositivo, muévelo al config.xml o elimínalo.
@@ -26,7 +38,8 @@
    <meta http-equiv="Content-Security-Policy"
       content="default-src 'self';
                script-src 'self' https://www.gstatic.com;
-               style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+               style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+               style-src-attr 'unsafe-inline';
                font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
                img-src 'self' data: blob: https:;
                connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://api.cloudinary.com https://res.cloudinary.com https://nominatim.openstreetmap.org https://maps.googleapis.com https://www.google.com;
@@ -50,109 +63,12 @@
 
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pages/legal.css">
-
-    <!-- Fix UX: touch-action y modal de edición de mensajes -->
-        <style>
-        /* Elimina el delay de 300 ms y el doble-tap-to-zoom
-           en navegadores móviles (fix del doble click en chats). */
-        .msg-row,
-        .chat-back,
-        .chat-seller-info,
-        .product-favorite,
-        .profile-tab,
-        .home-filter-chip,
-        .category-pill,
-        .suggestion-chip,
-        .filter-chip,
-        .nav-item,
-        .icon-btn,
-        .admin-tab,
-        .admin-filter-chip,
-        .msg-row-cta {
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Modal de edición de mensaje.
-           z-index: --z-edit-modal (700) está por encima de
-           --z-chat (250) del contenedor padre, así que se
-           renderiza encima del chat overlay. Como el padre
-           (chat-overlay) crea su propio stacking context,
-           este z solo compite dentro del chat, no contra
-           modales a nivel documento como --z-modal (500). */
-        .chat-edit-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: var(--z-edit-modal, 700);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .chat-edit-modal.hidden { display: none; }
-        .chat-edit-box {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .chat-edit-title {
-            margin: 0;
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--text-primary, #1a1a1a);
-        }
-        .chat-edit-input {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1.5px solid #e5e5e5;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 15px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 80px;
-            max-height: 200px;
-            outline: none;
-            transition: border-color 0.15s;
-            color: var(--text-primary, #1a1a1a);
-        }
-        .chat-edit-input:focus {
-            border-color: var(--primary, #2e7d32);
-        }
-        .chat-edit-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .chat-edit-btn {
-            border: none;
-            border-radius: 10px;
-            padding: 10px 18px;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            background: #f2f2f2;
-            color: var(--text-primary, #1a1a1a);
-            transition: opacity 0.15s;
-        }
-        .chat-edit-btn:active { opacity: 0.7; }
-        .chat-edit-btn.primary {
-            background: var(--primary, #2e7d32);
-            color: #fff;
-        }
-        .chat-edit-btn[disabled] {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    </style>
+    <!--
+      v3.3: estilos que antes vivían inline en <head>
+      (touch-action + .chat-edit-modal). DEBEN existir en
+      esta ruta o el navegador mostrará un error MIME.
+    -->
+  
 </head>
 <body>
 

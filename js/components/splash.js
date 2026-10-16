@@ -2,6 +2,21 @@
    PIPGO · SPLASH SCREEN
    Muestra el splash solo en la primera ejecución.
    Se elimina al estar lista la app (DOMContentLoaded + mínimo).
+
+   v1.1 (Ronda 5 fix):
+   - Storage.set('pipgo_splash_shown') movido a setAppReady().
+     Antes se seteaba en init(), lo que provocaba que si
+     Firebase fallaba y app.js eliminaba la splash en el
+     branch de error, el flag quedaba a true y en la próxima
+     recarga no se mostraba splash NUNCA. Ahora el flag
+     solo se marca cuando la app está realmente lista.
+
+   v1.2 (fix estructural):
+   - Se eliminó la duplicación accidental del IIFE que
+     provocaba una segunda ejecución de init() y el
+     warning "Splash no encontrado" tras la primera
+     carga completa. El archivo ahora contiene UN solo
+     IIFE, sin código huérfano.
    ===================================================== */
 
 (function () {
@@ -56,7 +71,17 @@
     }
 
     function setAppReady() {
+        if (appReady) return;
         appReady = true;
+
+        // v1.1: marcar como mostrada SOLO cuando la app está
+        // realmente lista. Si el arranque falla y app.js elimina
+        // la splash manualmente, este punto nunca se alcanza y
+        // el flag queda limpio para la próxima recarga.
+        if (!splashFinished) {
+            Storage.set(CONFIG_SPLASH.storageKey, true);
+        }
+
         tryFinishSplash();
     }
 
@@ -72,7 +97,10 @@
             removeImmediately();
             return;
         }
-        Storage.set(CONFIG_SPLASH.storageKey, true);
+
+        // v1.1: NO seteamos Storage.set aquí. Se hace en
+        // setAppReady() para no "quemar" el flag si el
+        // bootstrap falla antes de estar listo.
 
         if (document.readyState === 'complete') setAppReady();
         else window.addEventListener('load', setAppReady, { once: true });

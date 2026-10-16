@@ -1,5 +1,5 @@
 /* =====================================================
-   PIPGO · INLINE FIXES
+   PIPGO · INLINE FIXES v3.3
    -----------------------------------------------------
    Estilos que estaban inline en <head> y se movieron
    aquí para poder endurecer el CSP del proyecto.
@@ -9,6 +9,9 @@
    2) Modal de edición de mensaje (reemplaza window.prompt).
       Como vive dentro de .chat-overlay (z-chat 250), su
       z-index solo compite dentro de ese stacking context.
+
+   v3.3: re-verificado que el archivo exista. Un 404
+   provocaba "Refused to apply style ... MIME type text/html".
    ===================================================== */
 
 /* ---------- 1) touch-action / tap-highlight ---------- */

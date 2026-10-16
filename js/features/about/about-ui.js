@@ -4,9 +4,17 @@
    Sección "Detrás de PipGo hay una historia".
    Carga 100% estática: no lee Firestore ni servicios.
    -----------------------------------------------------
-   v1.5:
+   v1.6 (Ronda 5 fixes):
+   - ESC respeta modales de mayor z-index (Auth, Admin,
+     Settings, Preview, Filter, Draft, Unsaved, Seller,
+     ConfirmDialog). Si alguno está abierto, NO consumimos
+     el ESC: dejamos que app.js lo procese según su orden
+     de z-index. Antes cerrábamos el lightbox incluso con
+     un modal z-500 encima.
+
+   Heredado v1.5:
    - Eliminada la etiqueta "Recuerdo XX" del carrusel.
-   - Añadido reveal on scroll con IntersectionObserver.
+   - Reveal on scroll con IntersectionObserver.
    - Fade-in de fotos al cargarse.
    - Hover lift (solo punteros con mouse).
    ===================================================== */
@@ -773,10 +781,42 @@
 
     /* =====================================================
        8) ESC GLOBAL
+       -----------------------------------------------------
+       v1.6: Antes de consumir el ESC, comprobamos si hay un
+       modal de MAYOR z-index abierto (z-modal 500). Si lo
+       hay, NO llamamos stopImmediatePropagation: dejamos
+       que el evento llegue a app.js, que cierra el modal
+       correspondiente según su orden descendente de z.
+
+       El lightbox de About vive en z-lightbox (300). Los
+       modales viven en z-modal (500). Por eso, si hay algo
+       a z-500 encima, el ESC debe ir a app.js.
        ===================================================== */
+    function _somethingAboveLightboxIsOpen() {
+        if (window.AuthUI && AuthUI.isAuthModalOpen && AuthUI.isAuthModalOpen()) return true;
+        if (window.AdminUI && AdminUI.isConfirmModalOpen && AdminUI.isConfirmModalOpen()) return true;
+        if (window.ProfileUI && ProfileUI.isSettingsModalOpen && ProfileUI.isSettingsModalOpen()) return true;
+        if (window.LegalUI && LegalUI.isOpen && LegalUI.isOpen()) return true;
+        if (window.PublicationUI) {
+            if (PublicationUI.isPreviewModalOpen && PublicationUI.isPreviewModalOpen()) return true;
+            if (PublicationUI.isFilterModalOpen && PublicationUI.isFilterModalOpen()) return true;
+            if (PublicationUI.isDraftModalOpen && PublicationUI.isDraftModalOpen()) return true;
+            if (PublicationUI.isUnsavedModalOpen && PublicationUI.isUnsavedModalOpen()) return true;
+        }
+        const confirmModal = document.getElementById('confirm-modal');
+        if (confirmModal && !confirmModal.classList.contains('hidden')) return true;
+        const sellerModal = document.getElementById('seller-modal');
+        if (sellerModal && !sellerModal.classList.contains('hidden')) return true;
+        return false;
+    }
+
     function handleKeydown(e) {
         if (e.key !== 'Escape') return;
         if (!isLightboxOpen()) return;
+
+        // Si hay algo de mayor z-index encima, NO consumimos:
+        // dejamos que app.js lo procese.
+        if (_somethingAboveLightboxIsOpen()) return;
 
         e.preventDefault();
         e.stopImmediatePropagation();
