@@ -110,8 +110,8 @@
         role: 'Asesora académica',
         roleIcon: 'fa-graduation-cap',
         description: 'Acompañó al equipo durante la transición de PipGo, aportando perspectiva académica y guiando la construcción de la nueva visión del proyecto.',
-        email: 'anery.suarez.vazquez@pipgo.app',
-        photo: 'assets/about/anery-suarez-vazquez.webp'
+        email: 'asuarez_pa@utusumacinta.edu.mx',
+        photo: 'assets/about/anery-suarez-vazquezzz.webp'
     };
 
     /* Team ordenado por rol Scrum:
